@@ -15,8 +15,8 @@ void HelloBoot()
 
 	for (i = 0; (i < len) && (i < MAX_OFFSET); i++)
 	{
-		gVideo[i].color = 10;
-		gVideo[i].c = boot[i];
+		gVideo[i].Color = 10;
+		gVideo[i].Character = boot[i];
 	}
 }
 
