@@ -3,3 +3,4 @@ soare-surse/.vs/
 soare-surse/bin/
 *.db
 *.vmdk
+*.opendb
