@@ -1,8 +1,6 @@
 #ifndef _SCREEN_H_
 #define _SCREEN_H_
 
-#include "defs.h"
-
 #define MAX_LINES       25
 #define MAX_COLUMNS     80
 #define MAX_OFFSET      2000    //25 lines * 80 chars

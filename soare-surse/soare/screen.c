@@ -1,4 +1,6 @@
+#include "defs.h"
 #include "screen.h"
+
 
 static PSCREEN gVideo = (PSCREEN)(0x000B8000);
 
