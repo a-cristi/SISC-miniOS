@@ -54,6 +54,13 @@ typedef signed __int16      INT16;
 typedef signed __int32      INT32;
 typedef signed __int64      INT64;
 
+typedef char                CHAR, *PCHAR;
+typedef unsigned char       UCHAR, *PUCHAR;
+
+typedef size_t              SIZE_T, *PSIZE_T;
+
+typedef void                VOID, *PVOID;
+
 
 //
 // frequently used definitions
