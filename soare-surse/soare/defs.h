@@ -61,6 +61,7 @@ typedef size_t              SIZE_T, *PSIZE_T;
 
 typedef void                VOID, *PVOID;
 
+typedef BYTE                BOOLEAN, *PBOOLEAN;
 
 //
 // frequently used definitions
@@ -73,5 +74,8 @@ typedef void                VOID, *PVOID;
 
 #define MIN(x, y)           (((x) < (y)) ? (x) : (y))
 #define MAX(x, y)           (((x) > (y)) ? (x) : (y))
+
+#define TRUE                1
+#define FALSE               0
 
 #endif // _DEFS_H_
