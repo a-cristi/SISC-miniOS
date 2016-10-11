@@ -1,8 +1,9 @@
 #include "defs.h"
 #include "screen.h"
 
+static PSCREEN gVideoBuffer = (PSCREEN)(0x000B8000);
+static VGA_COLOR gCurrentColor = vgaColorWhite;
 
-static PSCREEN gVideo = (PSCREEN)(0x000B8000);
 
 void HelloBoot()
 {
@@ -17,8 +18,16 @@ void HelloBoot()
 
 	for (i = 0; (i < len) && (i < MAX_OFFSET); i++)
 	{
-		gVideo[i].Color = 10;
-		gVideo[i].Character = boot[i];
+		gVideoBuffer[i].Color = 10;
+		gVideoBuffer[i].Character = boot[i];
 	}
 }
 
+
+VOID
+ScrSetColor(
+    VGA_COLOR Color
+)
+{
+    gCurrentColor = Color;
+}

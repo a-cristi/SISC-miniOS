@@ -38,13 +38,17 @@ typedef struct _SCREEN
 #pragma pack(pop)
 
 
-void HelloBoot();
+VOID HelloBoot();
 
-void SetColor(VGA_COLOR Color);
-void ClearScreen();
-void PutChar(CHAR C, DWORD Pos);
-void PutString(PCHAR String, DWORD Pos);
-void PutStringLine(PCHAR String, DWORD Line);
+VOID 
+ScrSetColor(
+    VGA_COLOR Color
+);
+
+VOID ScrClearScreen();
+VOID ScrPutChar(CHAR C, DWORD Pos);
+VOID ScrPutString(PCHAR String, DWORD Pos);
+VOID ScrPutStringLine(PCHAR String, DWORD Line);
 
 
 #endif // _SCREEN_H_
