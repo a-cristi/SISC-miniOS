@@ -1,7 +1,7 @@
 #ifndef _SCREEN_H_
 #define _SCREEN_H_
 
-#include "boot.h"
+#include "defs.h"
 
 #define MAX_LINES       25
 #define MAX_COLUMNS     80
