@@ -78,4 +78,6 @@ typedef BYTE                BOOLEAN, *PBOOLEAN;
 #define TRUE                1
 #define FALSE               0
 
+#define NULL                ((PVOID)0)
+
 #endif // _DEFS_H_
