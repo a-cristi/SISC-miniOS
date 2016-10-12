@@ -57,7 +57,8 @@ typedef signed __int64      INT64;
 typedef char                CHAR, *PCHAR;
 typedef unsigned char       UCHAR, *PUCHAR;
 
-typedef size_t              SIZE_T, *PSIZE_T;
+/// TODO/FIXME: THIS WILL NOT WORK ON 32-BIT BUILDS, DON'T BE LAZY!!
+typedef unsigned __int64    SIZE_T, *PSIZE_T;
 
 typedef void                VOID, *PVOID;
 
