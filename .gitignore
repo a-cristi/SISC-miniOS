@@ -4,3 +4,4 @@ soare-surse/bin/
 *.db
 *.vmdk
 *.opendb
+soare-tools/vmware.log
