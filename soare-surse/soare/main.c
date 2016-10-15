@@ -3,7 +3,6 @@
 
 void EntryPoint(void)
 {
-    //__magic();                  // break into BOCHS
-
-	//HelloBoot();
+    VgaInit(VGA_MEMORY_BUFFER, vgaColorWhite, vgaColorBlack);
+    __halt();
 }

@@ -1,10 +1,11 @@
 #ifndef _SCREEN_H_
 #define _SCREEN_H_
 
-#define MAX_LINES       25
-#define MAX_COLUMNS     80
-#define MAX_OFFSET      2000    //25 lines * 80 chars
+#define VGA_MEMORY_BUFFER           (PVOID)(0xB8000ULL)
 
+#define VGA_LINES                   25
+#define VGA_COLUMNS                 80
+#define MAX_OFFSET                  (VGA_COLUMNS * VGA_LINES)
 
 // Text-mode color constants
 typedef enum VGA_COLOR
@@ -27,28 +28,41 @@ typedef enum VGA_COLOR
     vgaColorWhite,
 } VGA_COLOR, *PVGA_COLOR;
 
-
-#pragma pack(push)
-#pragma pack(1)
-typedef struct _SCREEN
-{
-    CHAR    Character;
-    BYTE    Color;      // VGA_COLOR
-}SCREEN, *PSCREEN;
-#pragma pack(pop)
-
-
-VOID HelloBoot();
-
-VOID 
-ScrSetColor(
-    VGA_COLOR Color
+VOID
+VgaInit(
+    _In_ PVOID Buffer,
+    _In_ VGA_COLOR DefaultForeground,
+    _In_ VGA_COLOR DefaultBackground
 );
 
-VOID ScrClearScreen();
-VOID ScrPutChar(CHAR C, DWORD Pos);
-VOID ScrPutString(PCHAR String, DWORD Pos);
-VOID ScrPutStringLine(PCHAR String, DWORD Line);
+VOID
+VgaFillScreen(
+    _In_ CHAR Ch,
+    _In_ VGA_COLOR Foreground,
+    _In_ VGA_COLOR Background
+);
 
+#define VgaClearScreenToColor(fg, bg)   VgaFillScreen(' ', (fg), (bg))
+#define CLS                             VgaClearScreenToColor(vgaColorBlack, vgaColorBlack)
+
+VOID
+VgaPutChar(
+    _In_ CHAR Ch
+);
+
+VOID
+VgaPutString(
+    _In_ const PCHAR Str
+);
+
+VOID
+VgaSetForeground(
+    _In_ VGA_COLOR Fg
+);
+
+VOID
+VgaSetBackground(
+    _In_ VGA_COLOR Bg
+);
 
 #endif // _SCREEN_H_
