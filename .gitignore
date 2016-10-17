@@ -5,3 +5,5 @@ soare-surse/bin/
 *.vmdk
 *.opendb
 soare-tools/vmware.log
+soare-tools/soare-iso/boot/soare.bin
+soare-tools/soare.iso
