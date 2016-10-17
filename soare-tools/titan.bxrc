@@ -6,16 +6,14 @@ display_library: win32, options="gui_debug"
 memory: host=512, guest=512
 romimage: file="C:\Program Files (x86)\Bochs-2.6.8/BIOS-bochs-latest"
 vgaromimage: file="C:\Program Files (x86)\Bochs-2.6.8/VGABIOS-lgpl-latest"
-#boot: floppy
-boot: disk
+boot: cdrom
 floppy_bootsig_check: disabled=0
 # floppya: type=1_44, 1_44="c:\PSNA\Lab1\floppy.img", status=inserted, write_protected=0
 # no floppyb
 ata0: enabled=1, ioaddr1=0x1f0, ioaddr2=0x3f0, irq=14
-# ata0-master: type=none
-# Creating hard disk image 'titan.img' with CHS=203/16/63
-ata0-master: type=disk, path="c:\PSNA\Lab2\SOARE\soare2-flat.vmdk", mode=flat
-ata0-slave: type=none
+ata0-master: type=cdrom, path="soare.iso", status=inserted, model="Generic 1234", biosdetect=auto
+ata0-slave: type=cdrom, path=none, status=ejected, model="Generic 1234", biosdetect=auto
+# ata0-slave: type=none
 ata1: enabled=1, ioaddr1=0x170, ioaddr2=0x370, irq=15
 ata1-master: type=none
 ata1-slave: type=none
