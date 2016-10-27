@@ -128,13 +128,6 @@ gMultiBootEntryPoint:
 ;; EXPORT TO C FUNCTIONS
 ;;--------------------------------------------------------
 
-;%ifidn __OUTPUT_FORMAT__, win32 ; win32 builds from Visual C decorate C names using _ 
-;global ___cli
-;___cli equ __cli
-;%else
-;global __cli
-;%endif
-
 %macro EXPORT2C 1-*
 %rep  %0
     %ifidn __OUTPUT_FORMAT__, win32 ; win32 builds from Visual C decorate C names using _ 
@@ -147,17 +140,9 @@ gMultiBootEntryPoint:
 %endrep
 %endmacro
 
-EXPORT2C __cli, __sti, __magic
+EXPORT2C __DbgBochsBreak
 
-__cli:
-    CLI
-    RET
-
-__sti:
-    STI
-    RET
-
-__magic:
+__DbgBochsBreak:
     XCHG    BX,BX
     RET
 
