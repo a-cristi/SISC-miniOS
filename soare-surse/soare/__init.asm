@@ -22,6 +22,7 @@ global gMultiBootStruct
 KERNEL_BASE_VIRTUAL_32      equ 0x40000000			    ; magic 1G VA for x86 builds
 KERNEL_BASE_VIRTUAL_64      equ 0x0000000200000000	    ; magic 8G VA for x64 builds
 KERNEL_BASE_PHYSICAL        equ 0x200000                ; physical address where this file will be loaded (2 MB PA)
+KERNEL_BASE                 equ 0x200000
 
 MULTIBOOT_HEADER_BASE       equ KERNEL_BASE_PHYSICAL + 0x400 ; take into account the MZ/PE header + 0x400 allignment
                                                         ; the multiboot header begins in the .text section
@@ -41,6 +42,10 @@ IA23_EFER_LME               equ 0x100
 
 
 TOP_OF_STACK_VIRTUAL        equ KERNEL_BASE_VIRTUAL_64 + 0x10000
+
+PML4_BASE                   equ KERNEL_BASE + 0x2000
+PT_BASE                     equ KERNEL_BASE + 0x7000
+GDT_TABLE_ADDRESS           equ KERNEL_BASE + 0x4D8
 
 
 
@@ -72,11 +77,94 @@ times MULTIBOOT_INFO_STRUCT_SIZE db 0                   ; check out '3.3 Boot in
 times (0x100 - MULTIBOOT_HEADER_SIZE - MULTIBOOT_INFO_STRUCT_SIZE - 0x40) db 0
 
 ;;
-;; N.B. here we have plenty of space (over 60KB to be used to define various data structures needed, e.g. page tables)
+;; KERNEL_BASE + 0x4C0
 ;;
+__gdt_base:                                             ; GDT with 3 entries
+
+gdt_null        dq  0
+gdt_code        dq  0x002F9A000000FFFF                  ; Code segment, 64 bit, execute / read, present
+gdt_data        dq  0x00CF92000000FFFF                  ; Data segment
+
+CODE64_SEL      equ      0x08                           ; 64 bit mode code selector
+DATA64_SEL      equ      0x10                           ; 64 bit data selector / stack selector
+
+; size and address of __gdt_base                        ; base is 0x2004D8 (GDT_TABLE_ADDRESS)
+gdt_size        dw  0x18
+gdt_address     dq  KERNEL_BASE + 0x4C0
+
+times (0x1B1E) db 0
+
+gTempPageTables:
 
 ;;
-;; KERNEL_BASE_PHYSICAL + 0x4C0
+;; IMPORTANT: this must be at KERNEL_BASE + 0x2000
+;;
+
+__pml4_table:
+dq              0x203007        ; 0 - 512G
+dq              0
+dq              0x204007        ; 1T - 1,5T
+times 509 dq    0
+
+__pdp_table_identity:
+dq              0x205007        ; 0 - 1G
+times 511 dq    0
+
+__pdp_table_1t:
+dq              0x206007        ; 1 - 1,5T
+times 511 dq    0
+
+__pd_table_1:
+dq              0x0207007       ; entry for 0 - 2M, PT, using PT to avoid mapping first 4K (do NOT map NULL pointer)
+dq              0x0200087       ; identity mapping for 2-4M, page
+dq              0x0400087       ; identity mapping for 4-6M, page
+dq              0x0600087       ; identity mapping for 6-8M, page
+dq              0x0800087       ; identity mapping for 8-10M, page
+dq              0x0A00087       ; identity mapping for 10-12M, page
+dq              0x0C00087       ; identity mapping for 12-14M, page
+dq              0x0E00087       ; identity mapping for 14-16M, page
+dq              0x1000087       ; identity mapping for 16-18M, page
+dq              0x1200087       ; identity mapping for 18-20M, page
+dq              0x1400087       ; identity mapping for 20-22M, page
+dq              0x1600087       ; identity mapping for 22-24M, page
+dq              0x1800087       ; identity mapping for 24-26M, page
+dq              0x1A00087       ; identity mapping for 26-28M, page
+dq              0x1C00087       ; identity mapping for 28-30M, page
+dq              0x1E00087       ; identity mapping for 30-32M, page
+dq              0x2000087       ; identity mapping for 32-34M, page
+times 495 dq    0
+
+__pd_table_2:
+dq              0x0200087       ; mapping for physical 2-4M to virtual 1T-to-1T+2M range, page
+dq              0x0400087       ; mapping for physical 4-6M to virtual 1T+2M-to-1T+4M range, page
+dq              0x0600087       ; mapping for physical 6-8M to virtual 1T+4M-to-1T+6M range, page
+dq              0x0800087       ; mapping for physical 8-10M to virtual 1T+6M-to-1T+8M range, page
+dq              0x0A00087       ; mapping for physical 10-12M to virtual 1T+8M-to-1T+10M range, page
+dq              0x0C00087       ; mapping for physical 12-14M to virtual 1T+10M-to-1T+12M range, page
+dq              0x0E00087       ; mapping for physical 14-16M to virtual 1T+12M-to-1T+14M range, page
+dq              0x1000087       ; mapping for physical 16-18M, to virtual 1T+14M-to-1T+16M range, page
+dq              0x1200087       ; mapping for physical 18-20M, to virtual 1T+16M-to-1T+18M range, page
+dq              0x1400087       ; mapping for physical 20-22M, to virtual 1T+18M-to-1T+20M range, page
+dq              0x1600087       ; mapping for physical 22-24M, to virtual 1T+20M-to-1T+22M range, page
+dq              0x1800087       ; mapping for physical 24-26M, to virtual 1T+22M-to-1T+24M range, page
+dq              0x1A00087       ; mapping for physical 26-28M, to virtual 1T+24M-to-1T+26M range, page
+dq              0x1C00087       ; mapping for physical 28-30M, to virtual 1T+26M-to-1T+28M range, page
+dq              0x1E00087       ; mapping for physical 30-32M, to virtual 1T+28M-to-1T+30M range, page
+dq              0x2000087       ; mapping for physical 32-34M, to virtual 1T+30M-to-1T+32M range, page
+times 496 dq    0
+
+__pt_table:
+dq              0x000000                ; P = 0, NOT preset, to avoid NULL pointers
+times 511 dq    0    
+
+;;
+;; IMPORTANT: this must be at KERNEL_BASE + 0x8000
+;;
+
+gTempPageTablesEnd:
+
+;;
+;; N.B. here we have plenty of space (over 60KB to be used to define various data structures needed, e.g. page tables)
 ;;
 
 
@@ -90,7 +178,7 @@ times (0x100 - MULTIBOOT_HEADER_SIZE - MULTIBOOT_INFO_STRUCT_SIZE - 0x40) db 0
 ;; we explicitly allign the entry point to +64 KB (0x10000)
 ;;
 
-times 0x10000-0x400-$+gMultiBootHeader db 'G'           ; allignment
+times 0x10000 - 0x400 - $ + gMultiBootHeader db '0'     ; allignment
 
 
 ;;
@@ -107,19 +195,74 @@ gMultiBootEntryPoint:
     MOV     DWORD [0x000B8004], '6141'                  ; 64 bit build marker
 %endif
 
-    ;; enable SSE instructions (CR4.OSFXSR = 1)
-    MOV     EAX, CR4
-    OR      EAX, 0x00000200
-    MOV     CR4, EAX
+    ;;
+    ;; setup final PT table, to avoid mapping NULL pointers
+    ;;
 
-    MOV     ESP, KERNEL_BASE_PHYSICAL                   ; temporary ESP, just below code
-    
-    CALL EntryPoint
-    
-	MOV     DWORD [0x000B80FC], ' 0#0'
-    MOV     DWORD [0x000B8100], 'S0E0'       
-    MOV     DWORD [0x000B8104], 'C0U0'       
-    MOV     DWORD [0x000B8108], 'R0E0'
+    cld
+    mov     edi, PT_BASE + 8        ; skip the first entry
+    mov     ecx, 511                ; we need 511 entries
+    mov     eax, 0x00001007         ; P = 1, R/W = 1, U/S = 1, base physical address = 0x0000`1000
+    mov     edx, 0x00000000         ; upper half, because we use 64 bit entries
+_one_more_entry:
+    stosd                           ; store lower half of entry
+    add     eax, 0x00001000         ; +4K, next physical page
+    xchg    eax, edx
+    stosd                           ; store upper half 0x0000`0000
+    xchg    eax, edx
+    loop    _one_more_entry
+
+    ;; enable PAE
+    mov     eax, cr4
+    or      eax, CR4_PAE            ; set bit 0x00000020
+    mov     cr4, eax
+
+    mov     eax, PML4_BASE          ; 0x202000 physical
+    mov     cr3, eax                ; set PBDR
+
+    mov     ecx, IA32_EFER          ; MSR 0xC0000080, check out '9.8.5 Initializing IA-32e Mode' from Intel docs
+    rdmsr                           ; also check out 'Table B-2. IA-32 Architectural MSRs' from Intel docs
+    or      eax, IA23_EFER_LME      ; set LME bit, 0x100
+    wrmsr
+
+    ;; enable paging
+    mov     eax, cr0
+    or      eax, 0x80000000
+    mov     cr0, eax
+
+;;
+;; now we should be in 64-bit compatibility mode
+;;
+[bits 64]
+    ;; load the new GDT and go to real 64-bit mode
+    mov     rsi, GDT_TABLE_ADDRESS  ; 0x2004D8, with GDT base at 0x2004C0
+    lgdt    [rsi]
+
+    ;; set cs
+    mov     esp, KERNEL_BASE_PHYSICAL
+    xor     eax, eax
+    mov     ax, CODE64_SEL
+    push    rax                     ; this is a MUST, because retf will pop out 4 and 'push rax' actually means 
+                                    ; 'push eax', because we still run in 32 bit compat mode
+    call    $ + 5                   ; place return EIP onto the stack
+    mov     eax, 10                 ; instrux length to continue right after 'retf'
+    add     [rsp], eax
+    retf
+
+    ;; set also fs, gs
+    mov     ax, DATA64_SEL
+    mov     fs, ax
+    mov     gs, ax
+
+    ;; enable SSE instructions (CR4.OSFXSR = 1)
+    MOV     RAX, CR4
+    OR      RAX, 0x0000000000000200
+    MOV     CR4, RAX
+
+    MOV     RSP, KERNEL_BASE_PHYSICAL                   ; temporary ESP, just below code
+    sub     RSP, 0x20    
+
+    CALL    EntryPoint
     
     CLI
     HLT

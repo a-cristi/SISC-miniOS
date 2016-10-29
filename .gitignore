@@ -7,3 +7,11 @@ soare-surse/bin/
 soare-tools/vmware.log
 soare-tools/soare-iso/boot/soare.bin
 soare-tools/soare.iso
+soare-tools/boot_hybrid.img
+soare-tools/bx_enh_dbg.ini
+soare-tools/eltorito.img
+soare-tools/soare-iso-old/boot/grub/grub.cfg
+soare-tools/soare-iso-old/boot/soare.bin
+soare-tools/soare-iso/soare/boot/grub/grub.cfg
+soare-tools/soare-iso/soare/boot/soare.bin
+soare-tools/soare-ubuntu.iso
