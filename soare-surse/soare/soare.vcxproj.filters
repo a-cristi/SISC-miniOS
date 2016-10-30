@@ -12,6 +12,12 @@
     <Filter Include="Build Files">
       <UniqueIdentifier>{b416d8f5-c856-4e34-b029-5503c4418076}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\crt">
+      <UniqueIdentifier>{00027fcb-a4e5-4b2d-ae12-c42a93cc902e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\crt">
+      <UniqueIdentifier>{b345e19f-4810-4556-8afe-8a7e9d44017b}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.c">
@@ -19,6 +25,15 @@
     </ClCompile>
     <ClCompile Include="screen.c">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="string.c">
+      <Filter>Source Files\crt</Filter>
+    </ClCompile>
+    <ClCompile Include="memory.c">
+      <Filter>Source Files\crt</Filter>
+    </ClCompile>
+    <ClCompile Include="snprintf.c">
+      <Filter>Source Files\crt</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -30,6 +45,18 @@
     </ClInclude>
     <ClInclude Include="screen.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="string.h">
+      <Filter>Header Files\crt</Filter>
+    </ClInclude>
+    <ClInclude Include="varargs.h">
+      <Filter>Header Files\crt</Filter>
+    </ClInclude>
+    <ClInclude Include="memory.h">
+      <Filter>Header Files\crt</Filter>
+    </ClInclude>
+    <ClInclude Include="limits.h">
+      <Filter>Header Files\crt</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

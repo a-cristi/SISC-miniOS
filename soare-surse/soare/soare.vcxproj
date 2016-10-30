@@ -137,6 +137,7 @@
       <AdditionalIncludeDirectories>c:\Program Files (x86)\Windows Kits\8.1\include</AdditionalIncludeDirectories>
       <MinimalRebuild>false</MinimalRebuild>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <ShowIncludes>false</ShowIncludes>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -200,6 +201,7 @@
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <AdditionalIncludeDirectories>c:\Program Files (x86)\Windows Kits\8.1\include</AdditionalIncludeDirectories>
+      <ShowIncludes>false</ShowIncludes>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -223,11 +225,18 @@
   <ItemGroup>
     <ClInclude Include="boot.h" />
     <ClInclude Include="defs.h" />
+    <ClInclude Include="limits.h" />
+    <ClInclude Include="memory.h" />
     <ClInclude Include="screen.h" />
+    <ClInclude Include="string.h" />
+    <ClInclude Include="varargs.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.c" />
+    <ClCompile Include="memory.c" />
     <ClCompile Include="screen.c" />
+    <ClCompile Include="snprintf.c" />
+    <ClCompile Include="string.c" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="__init.asm">
