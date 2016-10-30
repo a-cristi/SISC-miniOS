@@ -226,12 +226,14 @@
     <ClInclude Include="boot.h" />
     <ClInclude Include="defs.h" />
     <ClInclude Include="limits.h" />
+    <ClInclude Include="log.h" />
     <ClInclude Include="memory.h" />
     <ClInclude Include="screen.h" />
     <ClInclude Include="string.h" />
     <ClInclude Include="varargs.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="log.c" />
     <ClCompile Include="main.c" />
     <ClCompile Include="memory.c" />
     <ClCompile Include="screen.c" />
