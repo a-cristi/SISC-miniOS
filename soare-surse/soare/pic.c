@@ -1,6 +1,10 @@
 #include "defs.h"
 #include "pic.h"
 
+BYTE gImrMaster = 0xFB;
+BYTE gImrSlave = 0xFF;
+
+
 static __forceinline
 VOID
 _PicOutByte(
@@ -10,6 +14,18 @@ _PicOutByte(
 {
     __outbyte(Port, Value);
     __inbyte(0x80);
+}
+
+
+static __forceinline
+VOID
+_PicSetImr(
+    _In_ BYTE Master,
+    _In_ BYTE Slave
+)
+{
+    _PicOutByte(PIC1_IMR_PORT, Master);
+    _PicOutByte(PIC2_IMR_PORT, Slave);
 }
 
 
@@ -56,4 +72,40 @@ PicDisable(
 {
     _PicOutByte(PIC2_DATA_PORT, 0xFF);
     _PicOutByte(PIC1_DATA_PORT, 0xFF);
+}
+
+
+VOID
+PicEnableIrq(
+    _In_ BYTE IrqNumber
+)
+{
+    if (IrqNumber < 8)
+    {
+        gImrMaster |= (1 << IrqNumber);
+    }
+    else
+    {
+        gImrSlave |= (1 << (IrqNumber - 8));
+    }
+
+    _PicSetImr(gImrMaster, gImrSlave);
+}
+
+
+VOID
+PicDisableIrq(
+    _In_ BYTE IrqNumber
+)
+{
+    if (IrqNumber < 8)
+    {
+        gImrMaster &= ~(1 << IrqNumber);
+    }
+    else
+    {
+        gImrSlave &= ~(1 << (IrqNumber - 8));
+    }
+
+    _PicSetImr(gImrMaster, gImrSlave);
 }
