@@ -71,8 +71,6 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="__init.asm">
-      <Filter>Source Files</Filter>
-    </CustomBuild>
+    <YASM Include="__init.yasm" />
   </ItemGroup>
 </Project>
