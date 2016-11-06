@@ -95,4 +95,21 @@ PicDisableIrq(
     _In_ BYTE IrqNumber
 );
 
+
+__forceinline
+VOID
+PicSendEoi(
+    _In_ BYTE IrqNumber
+)
+{
+    if (IrqNumber > 8)
+    {
+        __outbyte(PIC2_CMD_PORT, PIC_OCW2_EOI);
+    }
+    else
+    {
+        __outbyte(PIC1_CMD_PORT, PIC_OCW2_EOI);
+    }
+}
+
 #endif // !_PIC_H_
