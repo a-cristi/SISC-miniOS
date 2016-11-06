@@ -102,14 +102,13 @@ PicSendEoi(
     _In_ BYTE IrqNumber
 )
 {
+    // if this originated from the slave PIC we need to send the EOI to both PICs
     if (IrqNumber > 8)
     {
         __outbyte(PIC2_CMD_PORT, PIC_OCW2_EOI);
     }
-    else
-    {
-        __outbyte(PIC1_CMD_PORT, PIC_OCW2_EOI);
-    }
+        
+    __outbyte(PIC1_CMD_PORT, PIC_OCW2_EOI);
 }
 
 #endif // !_PIC_H_
