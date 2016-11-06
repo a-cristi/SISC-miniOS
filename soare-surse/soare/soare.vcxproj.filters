@@ -18,6 +18,12 @@
     <Filter Include="Source Files\crt">
       <UniqueIdentifier>{b345e19f-4810-4556-8afe-8a7e9d44017b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\kernel">
+      <UniqueIdentifier>{e72ee62e-dfeb-43ed-be69-ed47068bcd35}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\kernel">
+      <UniqueIdentifier>{fb8f1645-eec0-47c0-8999-524c2ec842ea}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.c">
@@ -37,6 +43,9 @@
     </ClCompile>
     <ClCompile Include="log.c">
       <Filter>Source Files\crt</Filter>
+    </ClCompile>
+    <ClCompile Include="pic.c">
+      <Filter>Source Files\kernel</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -63,6 +72,9 @@
     </ClInclude>
     <ClInclude Include="log.h">
       <Filter>Header Files\crt</Filter>
+    </ClInclude>
+    <ClInclude Include="pic.h">
+      <Filter>Header Files\kernel</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

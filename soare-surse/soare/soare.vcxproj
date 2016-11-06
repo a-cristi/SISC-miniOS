@@ -233,6 +233,7 @@
     <ClInclude Include="limits.h" />
     <ClInclude Include="log.h" />
     <ClInclude Include="memory.h" />
+    <ClInclude Include="pic.h" />
     <ClInclude Include="screen.h" />
     <ClInclude Include="string.h" />
     <ClInclude Include="varargs.h" />
@@ -241,6 +242,7 @@
     <ClCompile Include="log.c" />
     <ClCompile Include="main.c" />
     <ClCompile Include="memory.c" />
+    <ClCompile Include="pic.c" />
     <ClCompile Include="screen.c" />
     <ClCompile Include="snprintf.c" />
     <ClCompile Include="string.c" />
