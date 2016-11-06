@@ -35,6 +35,9 @@
     <ClCompile Include="snprintf.c">
       <Filter>Source Files\crt</Filter>
     </ClCompile>
+    <ClCompile Include="log.c">
+      <Filter>Source Files\crt</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="boot.h">
@@ -56,6 +59,9 @@
       <Filter>Header Files\crt</Filter>
     </ClInclude>
     <ClInclude Include="limits.h">
+      <Filter>Header Files\crt</Filter>
+    </ClInclude>
+    <ClInclude Include="log.h">
       <Filter>Header Files\crt</Filter>
     </ClInclude>
   </ItemGroup>
