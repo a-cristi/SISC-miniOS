@@ -81,6 +81,8 @@ PicDisable(
 #define PIC_IRQ_FPU         13
 #define PIC_IRQ_HDC         14
 
+#define IRQ2INTR(Irq)       ((Irq) + PIC1_BASE)
+
 VOID
 PicEnableIrq(
     _In_ BYTE IrqNumber
