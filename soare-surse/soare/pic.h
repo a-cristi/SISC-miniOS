@@ -38,10 +38,10 @@
 #define PIC2_IMR_PORT       0xA1    // read-only; IMR (Interrupt Mask Register) 
 
 // Interrupt level
-#define PIC_OCW2_L0         0x00
-#define PIC_OCW2_L1         0x01
-#define PIC_OCW2_L2         0x02
-#define PIC_OCW2_L_MASK     0x03
+#define PIC_OCW2_L0         0x01
+#define PIC_OCW2_L1         0x02
+#define PIC_OCW2_L2         0x04
+#define PIC_OCW2_L_MASK     0x07
 // Bits [3:4] are reserved and must be 0
 #define PIC_OCW2_EOI        0x20    // End of interrupt
 #define PIC_OCW_SL          0x40    // Selection
