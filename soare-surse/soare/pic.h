@@ -47,6 +47,13 @@
 #define PIC_OCW2_SL         0x40    // Selection
 #define PIC_OCW2_R          0x80    // Rotation option
 
+#define PIC_OCW3_RIS        0x01
+#define PIC_OCW3_RIR        0x02
+#define PIC_OCW3_MODE       0x04
+#define PIC_OCW3_SMM        0x20
+#define PIC_OCW3_ESMM       0x40
+#define PIC_OCW3_MASK_D7    0x80
+
 VOID
 PicInitialize(
     VOID
