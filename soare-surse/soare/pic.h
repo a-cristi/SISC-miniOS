@@ -44,8 +44,8 @@
 #define PIC_OCW2_L_MASK     0x07
 // Bits [3:4] are reserved and must be 0
 #define PIC_OCW2_EOI        0x20    // End of interrupt
-#define PIC_OCW_SL          0x40    // Selection
-#define PIC_OCW_R           0x80    // Rotation option
+#define PIC_OCW2_SL         0x40    // Selection
+#define PIC_OCW2_R          0x80    // Rotation option
 
 VOID
 PicInitialize(
