@@ -34,8 +34,8 @@
 //
 // OCWs (Operation Control Words)
 //
-#define PIC1_OCW1_PORT      0x20    // read-only; IMR (Interrupt Mask Register) 
-#define PIC2_OCW1_PORT      0xA0    // read-only; IMR (Interrupt Mask Register) 
+#define PIC1_IMR_PORT       0x21    // read-only; IMR (Interrupt Mask Register) 
+#define PIC2_IMR_PORT       0xA1    // read-only; IMR (Interrupt Mask Register) 
 
 // Interrupt level
 #define PIC_OCW2_L0         0x00
