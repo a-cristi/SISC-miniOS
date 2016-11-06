@@ -5,9 +5,11 @@
 
 #define PIC1_CMD_PORT       0x20    // write-only
 #define PIC1_DATA_PORT      0x21
+#define PIC1_STATUS_PORT    0x20    // read-only
 
 #define PIC2_CMD_PORT       0xA0    // write-only
 #define PIC2_DATA_PORT      0xA1
+#define PIC2_STATUS_PORT    0xA0    // read-only
 
 #define PIC1_BASE           0x20    // where to map IRQs 0-7
 #define PIC2_BASE           0x28    // where to map IRQs 8-15
