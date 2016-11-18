@@ -24,6 +24,9 @@
     <Filter Include="Source Files\kernel">
       <UniqueIdentifier>{fb8f1645-eec0-47c0-8999-524c2ec842ea}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\multiboot">
+      <UniqueIdentifier>{8deae3ee-550b-4669-9fd9-69de5d2f0d13}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.c">
@@ -75,6 +78,12 @@
     </ClInclude>
     <ClInclude Include="pic.h">
       <Filter>Header Files\kernel</Filter>
+    </ClInclude>
+    <ClInclude Include="multiboot.h">
+      <Filter>Header Files\multiboot</Filter>
+    </ClInclude>
+    <ClInclude Include="mbflg.h">
+      <Filter>Header Files\multiboot</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

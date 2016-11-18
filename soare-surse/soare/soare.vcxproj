@@ -232,7 +232,9 @@
     <ClInclude Include="defs.h" />
     <ClInclude Include="limits.h" />
     <ClInclude Include="log.h" />
+    <ClInclude Include="mbflg.h" />
     <ClInclude Include="memory.h" />
+    <ClInclude Include="multiboot.h" />
     <ClInclude Include="pic.h" />
     <ClInclude Include="screen.h" />
     <ClInclude Include="string.h" />
