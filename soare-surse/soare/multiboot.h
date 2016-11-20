@@ -120,4 +120,14 @@ typedef multiboot_header_t      MULTIBOOT_HEADER, *PMULTIBOOT_HEADER;
 typedef multiboot_info_t        MULTIBOOT_INFO, *PMULTIBOOT_INFO;
 typedef memory_map_t            MEMORY_MAP, *PMEMORY_MAP;
 
+typedef enum _MEM_TYPE
+{
+    memTypeUnknown = 0,
+    memTypeUsable,
+    memTypeReserved,
+    memTypeAcpiReclaimable,
+    memTypeAcpiNvs,
+    memTypeBad
+} MEM_TYPE, *PMEM_TYPE;
+
 #endif /* ! ASM */
