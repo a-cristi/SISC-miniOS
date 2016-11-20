@@ -102,7 +102,9 @@ typedef BYTE                BOOLEAN, *PBOOLEAN;
 #define NULL                ((PVOID)0)
 
 /// TODO: implement this
-#define assert(x)           
+#define assert(x)      
+
+#define BIT(i)              (1ULL << (i))
 
 #include <sal.h>
 
