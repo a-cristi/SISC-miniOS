@@ -262,6 +262,7 @@ _one_more_entry:
     MOV     RSP, KERNEL_BASE_PHYSICAL                   ; temporary ESP, just below code
     sub     RSP, 0x20    
 
+    MOV     RCX, RBX
     CALL    EntryPoint
     
     CLI
