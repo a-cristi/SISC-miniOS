@@ -27,6 +27,9 @@
     <Filter Include="Header Files\multiboot">
       <UniqueIdentifier>{8deae3ee-550b-4669-9fd9-69de5d2f0d13}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\multiboot">
+      <UniqueIdentifier>{ee3c551f-ee9e-4070-b3b8-3c145004367c}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.c">
@@ -49,6 +52,9 @@
     </ClCompile>
     <ClCompile Include="pic.c">
       <Filter>Source Files\kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="mb_util.c">
+      <Filter>Source Files\multiboot</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -83,6 +89,9 @@
       <Filter>Header Files\multiboot</Filter>
     </ClInclude>
     <ClInclude Include="mbflg.h">
+      <Filter>Header Files\multiboot</Filter>
+    </ClInclude>
+    <ClInclude Include="mb_util.h">
       <Filter>Header Files\multiboot</Filter>
     </ClInclude>
   </ItemGroup>
