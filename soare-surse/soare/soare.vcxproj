@@ -239,6 +239,7 @@
     <ClInclude Include="memmap.h" />
     <ClInclude Include="memory.h" />
     <ClInclude Include="multiboot.h" />
+    <ClInclude Include="physmemmgr.h" />
     <ClInclude Include="pic.h" />
     <ClInclude Include="screen.h" />
     <ClInclude Include="string.h" />
@@ -250,6 +251,7 @@
     <ClCompile Include="memmap.c" />
     <ClCompile Include="memory.c" />
     <ClCompile Include="mb_util.c" />
+    <ClCompile Include="physmemmgr.c" />
     <ClCompile Include="pic.c" />
     <ClCompile Include="screen.c" />
     <ClCompile Include="snprintf.c" />

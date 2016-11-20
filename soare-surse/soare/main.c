@@ -5,6 +5,7 @@
 #include "multiboot.h"
 #include "mb_util.h"
 #include "memmap.h"
+#include "physmemmgr.h"
 
 extern void __DbgBochsBreak(void);
 
@@ -26,6 +27,13 @@ void EntryPoint(
 
     MbDumpMemoryMap(MultiBootInfo);
     MmInitMemoryMapFromMultiboot(MultiBootInfo->mmap_addr, MultiBootInfo->mmap_length);
+
+    if (!MmPhysicalManagerInit())
+    {
+        Log("[FATAL ERROR] Failed to init the physical memory manager.\n");
+        __DbgBochsBreak();
+        __halt();
+    }
 
     Log("> Initializing PIC... ");
     PicInitialize();

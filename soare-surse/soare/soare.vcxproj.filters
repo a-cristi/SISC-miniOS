@@ -65,6 +65,9 @@
     <ClCompile Include="memmap.c">
       <Filter>Source Files\memory</Filter>
     </ClCompile>
+    <ClCompile Include="physmemmgr.c">
+      <Filter>Source Files\multiboot</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="boot.h">
@@ -104,6 +107,9 @@
       <Filter>Header Files\multiboot</Filter>
     </ClInclude>
     <ClInclude Include="memmap.h">
+      <Filter>Header Files\memory</Filter>
+    </ClInclude>
+    <ClInclude Include="physmemmgr.h">
       <Filter>Header Files\memory</Filter>
     </ClInclude>
   </ItemGroup>
