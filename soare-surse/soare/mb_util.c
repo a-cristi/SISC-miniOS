@@ -4,6 +4,22 @@
 #include "mb_util.h"
 #include "log.h"
 
+PCHAR
+MbMemoryTypeToString(
+    _In_ MEM_TYPE Type
+)
+{
+    switch (Type)
+    {
+    case memTypeUsable: return "Usable";
+    case memTypeReserved: return "Reserved";
+    case memTypeAcpiReclaimable: return "ACPI Reclaimable";
+    case memTypeAcpiNvs: return "ACPI NVS";
+    case memTypeBad: return "Bad";
+    default: return "Unknown";
+    }
+}
+
 BOOLEAN
 MbInterpretMultiBootInfo(
     _In_ PMULTIBOOT_INFO MultibootInfo
@@ -70,4 +86,35 @@ MbInterpretMultiBootInfo(
     }
 
     return bValid;
+}
+
+VOID
+MbDumpMemoryMap(
+    _In_ PMULTIBOOT_INFO MultibootInfo
+)
+{
+    PMEMORY_MAP pMapEntry = (MEMORY_MAP *)(SIZE_T)MultibootInfo->mmap_addr;
+    DWORD length = MultibootInfo->mmap_length;
+    DWORD parsedLength = 0;
+
+    while (parsedLength < length)
+    {
+        QWORD base = 0;
+        QWORD end = 0;
+
+        if (length - parsedLength < sizeof(MEMORY_MAP))
+        {
+            break;
+        }
+
+        base = ((QWORD)pMapEntry->base_addr_high << 32) | pMapEntry->base_addr_low;
+        end = ((QWORD)pMapEntry->length_high << 32) | pMapEntry->length_low;
+        end += base;
+
+        Log("Region [%018p, %018p) with type: %d (%s)\n", 
+            base, end, pMapEntry->type, MbMemoryTypeToString(pMapEntry->type));
+    
+        parsedLength += pMapEntry->size + sizeof(pMapEntry->size);
+        pMapEntry = (MEMORY_MAP *)((SIZE_T)MultibootInfo->mmap_addr + parsedLength);
+    }
 }

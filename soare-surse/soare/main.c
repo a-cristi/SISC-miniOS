@@ -23,6 +23,8 @@ void EntryPoint(
         __halt();
     }
 
+    MbDumpMemoryMap(MultiBootInfo);
+
     Log("> Initializing PIC... ");
     PicInitialize();
     Log("Done!\n");

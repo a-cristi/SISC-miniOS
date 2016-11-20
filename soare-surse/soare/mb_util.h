@@ -11,4 +11,9 @@ MbInterpretMultiBootInfo(
     _In_ PMULTIBOOT_INFO MultibootInfo
 );
 
+VOID
+MbDumpMemoryMap(
+    _In_ PMULTIBOOT_INFO MultibootInfo
+);
+
 #endif // !_MB_UTIL_H_
