@@ -116,4 +116,8 @@ typedef struct memory_map
     unsigned long type;
 } memory_map_t;
 
+typedef multiboot_header_t      MULTIBOOT_HEADER, *PMULTIBOOT_HEADER;
+typedef multiboot_info_t        MULTIBOOT_INFO, *PMULTIBOOT_INFO;
+typedef memory_map_t            MEMORY_MAP, *PMEMORY_MAP;
+
 #endif /* ! ASM */
