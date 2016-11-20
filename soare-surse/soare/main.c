@@ -4,6 +4,7 @@
 #include "pic.h"
 #include "multiboot.h"
 #include "mb_util.h"
+#include "memmap.h"
 
 extern void __DbgBochsBreak(void);
 
@@ -24,6 +25,7 @@ void EntryPoint(
     }
 
     MbDumpMemoryMap(MultiBootInfo);
+    MmInitMemoryMapFromMultiboot(MultiBootInfo->mmap_addr, MultiBootInfo->mmap_length);
 
     Log("> Initializing PIC... ");
     PicInitialize();

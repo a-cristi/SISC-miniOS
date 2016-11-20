@@ -8,7 +8,8 @@ typedef enum _MEM_TYPE
     memTypeReserved,
     memTypeAcpiReclaimable,
     memTypeAcpiNvs,
-    memTypeBad
+    memTypeBad,
+    memTypeLast = memTypeBad
 } MEM_TYPE, *PMEM_TYPE;
 
 typedef struct _MMAP_ENTRY
@@ -17,5 +18,17 @@ typedef struct _MMAP_ENTRY
     QWORD       Length;
     MEM_TYPE    Type;
 } MMAP_ENTRY, *PMMAP_ENTRY;
+
+VOID
+MmDumpMemoryMap(
+    _In_ PMMAP_ENTRY Map,
+    _In_ DWORD Count
+);
+
+VOID
+MmInitMemoryMapFromMultiboot(
+    _In_ QWORD MapAddress,
+    _In_ DWORD MapLength
+);
 
 #endif // !_MEM_MAP_H_
