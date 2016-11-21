@@ -1,12 +1,14 @@
 #include "defs.h"
 #include "memmap.h"
 #include "multiboot.h"
+#include "memdefs.h"
 #include "log.h"
 
 #define MAX_MMAP_ENTRIES    128
 
 static MMAP_ENTRY gBootMemoryMap[MAX_MMAP_ENTRIES];
 static DWORD gBootMemoryMapEntries;
+static SIZE_T gBootMemoryLimit;
 
 PCHAR
 MmMemoryTypeToString(
@@ -52,6 +54,7 @@ MmInitMemoryMapFromMultiboot(
 
     memset(gBootMemoryMap, 0, sizeof(gBootMemoryMap));
     gBootMemoryMapEntries = 0;
+    gBootMemoryLimit = 0;
 
     while (parsedLength < MapLength)
     {
@@ -76,6 +79,9 @@ MmInitMemoryMapFromMultiboot(
         gBootMemoryMapEntries++;
     }
 
-    Log("[MMAP] Parsed %d entries\n", gBootMemoryMapEntries);
+    gBootMemoryLimit = gBootMemoryMap[gBootMemoryMapEntries - 1].Base + gBootMemoryMap[gBootMemoryMapEntries - 1].Length;
+    
+    Log("[MMAP] Parsed %d entries for a total size of 0x%llx Bytes (%d MB)\n", 
+        gBootMemoryMapEntries, gBootMemoryLimit, ByteToMb(gBootMemoryLimit));
     MmDumpMemoryMap(gBootMemoryMap, gBootMemoryMapEntries);
 }
