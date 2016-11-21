@@ -112,6 +112,9 @@
     <ClInclude Include="physmemmgr.h">
       <Filter>Header Files\memory</Filter>
     </ClInclude>
+    <ClInclude Include="memdefs.h">
+      <Filter>Header Files\memory</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="postbuild.cmd">
