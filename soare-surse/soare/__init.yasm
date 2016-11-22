@@ -20,7 +20,8 @@ global gMultiBootStruct
 ;; the plain binary image is loaded to 0x00200000 (2MB)
 ;;
 KERNEL_BASE_VIRTUAL_32      equ 0x40000000			    ; magic 1G VA for x86 builds
-KERNEL_BASE_VIRTUAL_64      equ 0x0000000200000000	    ; magic 8G VA for x64 builds
+KERNEL_BASE_VIRTUAL_64      equ 0x10000000000           ; magic 1T VA for x64 builds
+
 KERNEL_BASE_PHYSICAL        equ 0x200000                ; physical address where this file will be loaded (2 MB PA)
 KERNEL_BASE                 equ 0x200000
 
@@ -262,7 +263,14 @@ _one_more_entry:
     MOV     RSP, KERNEL_BASE_PHYSICAL                   ; temporary ESP, just below code
     sub     RSP, 0x20    
 
-    MOV     RCX, RBX
+    ; switch to 1T VA
+    call    $ + 5
+    mov     rax, KERNEL_BASE_VIRTUAL_64 - KERNEL_BASE_PHYSICAL
+    add     qword [rsp], rax
+    add     qword [rsp], 0x14   ; instructions length so we will return after the retn
+    retn
+
+    MOV     RCX, RBX                                    ; pointer to the multi boot info structure (physical address)
     CALL    EntryPoint
     
     CLI
