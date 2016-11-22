@@ -36,6 +36,12 @@
     <Filter Include="Source Files\memory">
       <UniqueIdentifier>{a93ab6ad-c27d-40d7-b072-c82f8ec53f00}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\debug">
+      <UniqueIdentifier>{1e378f34-4ced-4f47-8b97-beb82239b67a}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\debug">
+      <UniqueIdentifier>{3d60f554-6b7c-4fcf-83ed-87f4a6656d56}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.c">
@@ -65,8 +71,17 @@
     <ClCompile Include="memmap.c">
       <Filter>Source Files\memory</Filter>
     </ClCompile>
+    <ClCompile Include="kernel.c">
+      <Filter>Source Files\kernel</Filter>
+    </ClCompile>
     <ClCompile Include="physmemmgr.c">
-      <Filter>Source Files\multiboot</Filter>
+      <Filter>Source Files\memory</Filter>
+    </ClCompile>
+    <ClCompile Include="panic.c">
+      <Filter>Source Files\debug</Filter>
+    </ClCompile>
+    <ClCompile Include="debugger.c">
+      <Filter>Source Files\debug</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -114,6 +129,15 @@
     </ClInclude>
     <ClInclude Include="memdefs.h">
       <Filter>Header Files\memory</Filter>
+    </ClInclude>
+    <ClInclude Include="kernel.h">
+      <Filter>Header Files\kernel</Filter>
+    </ClInclude>
+    <ClInclude Include="panic.h">
+      <Filter>Header Files\debug</Filter>
+    </ClInclude>
+    <ClInclude Include="debugger.h">
+      <Filter>Header Files\debug</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

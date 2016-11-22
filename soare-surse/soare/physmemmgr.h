@@ -3,7 +3,7 @@
 
 BOOLEAN
 MmPhysicalManagerInit(
-    VOID
+    _In_ PVOID BitmapAddress
 );
 
 #endif // !_PHYSMEMMGR_H_

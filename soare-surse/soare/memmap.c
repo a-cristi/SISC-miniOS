@@ -4,11 +4,9 @@
 #include "memdefs.h"
 #include "log.h"
 
-#define MAX_MMAP_ENTRIES    128
-
-static MMAP_ENTRY gBootMemoryMap[MAX_MMAP_ENTRIES];
-static DWORD gBootMemoryMapEntries;
-static SIZE_T gBootMemoryLimit;
+MMAP_ENTRY gBootMemoryMap[MAX_MMAP_ENTRIES];
+DWORD gBootMemoryMapEntries;
+SIZE_T gBootMemoryLimit;
 
 PCHAR
 MmMemoryTypeToString(
