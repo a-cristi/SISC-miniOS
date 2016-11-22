@@ -1,10 +1,10 @@
 #ifndef _MEMDEFS_H_
 #define _MEMDEFS_H_
 
-#define ONE_KB              (1024 * 1)
-#define ONE_MB              (1024 * ONE_KB)
-#define ONE_GB              (1024 * ONE_MB)
-#define ONE_TB              (1024 * ONE_GB)
+#define ONE_KB              (1024ULL * 1)
+#define ONE_MB              (1024ULL * ONE_KB)
+#define ONE_GB              (1024ULL * ONE_MB)
+#define ONE_TB              (1024ULL * ONE_GB)
 
 #define KbToByte(x)         ((x) * ONE_KB)
 #define MbToByte(x)         ((x) * ONE_MB)
