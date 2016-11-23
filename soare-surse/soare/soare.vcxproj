@@ -242,6 +242,7 @@
     <ClInclude Include="memmap.h" />
     <ClInclude Include="memory.h" />
     <ClInclude Include="multiboot.h" />
+    <ClInclude Include="ntstatus.h" />
     <ClInclude Include="panic.h" />
     <ClInclude Include="physmemmgr.h" />
     <ClInclude Include="pic.h" />
