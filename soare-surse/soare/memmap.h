@@ -19,6 +19,8 @@ typedef struct _MMAP_ENTRY
     MEM_TYPE    Type;
 } MMAP_ENTRY, *PMMAP_ENTRY;
 
+#define MAX_MMAP_ENTRIES    128
+
 VOID
 MmDumpMemoryMap(
     _In_ PMMAP_ENTRY Map,
