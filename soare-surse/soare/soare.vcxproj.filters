@@ -42,6 +42,9 @@
     <Filter Include="Source Files\debug">
       <UniqueIdentifier>{3d60f554-6b7c-4fcf-83ed-87f4a6656d56}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Header Files\status">
+      <UniqueIdentifier>{e373363b-c215-4029-b6bb-7f65f4cd6748}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.c">
@@ -138,6 +141,9 @@
     </ClInclude>
     <ClInclude Include="debugger.h">
       <Filter>Header Files\debug</Filter>
+    </ClInclude>
+    <ClInclude Include="ntstatus.h">
+      <Filter>Header Files\status</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

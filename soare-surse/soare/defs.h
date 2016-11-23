@@ -84,6 +84,8 @@ typedef void                VOID, *PVOID;
 
 typedef BYTE                BOOLEAN, *PBOOLEAN;
 
+typedef INT32               NTSTATUS;
+
 //
 // frequently used definitions
 //
