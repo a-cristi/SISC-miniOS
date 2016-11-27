@@ -1,8 +1,21 @@
 #include "defs.h"
 #include "memdefs.h"
+#include "ntstatus.h"
 #include "memmap.h"
 #include "physmemmgr.h"
 #include "log.h"
+
+/*
+
+    Simple physical memory manager.
+    A bitmap is used to describe the entire physical memory. One bit describes one memory page (default is 4K):
+    - if set, the page is reserved
+    - if cleared, the page is free
+    For easier maintainability, the bitmap is seed as a QWORD array. This allows us to quickly check 64 pages at once.
+
+    Internally, a page is converted to an index (for example, when using 4K pages, the page 0x1000 is converted to index 1).
+
+*/
 
 extern MMAP_ENTRY gBootMemoryMap[MAX_MMAP_ENTRIES];
 extern DWORD gBootMemoryMapEntries;
@@ -48,6 +61,93 @@ _MmClearBit(
 )
 {
     gPhysMemState.Bitmap[Bit / BITS_PER_ENTRY] &= ~(1ULL << (Bit % BITS_PER_ENTRY));
+}
+
+
+static
+NTSTATUS
+_MmGetFreePhysicalPageIndex(
+    _Out_ QWORD * PageIndex
+)
+{
+    for (DWORD q = 0; q < gPhysMemState.PageCount / BITS_PER_ENTRY; q++)
+    {
+        // if the entire QWORD is set it means that these 64 pages are already reserved
+        if ((QWORD)-1 == gPhysMemState.Bitmap[q])
+        {
+            continue;
+        }
+
+        // test each page
+        for (BYTE p = 0; p < BITS_PER_ENTRY; p++)
+        {
+            if (0 == (gPhysMemState.Bitmap[q] & (1ULL << p)))
+            {
+                // found it!
+                *PageIndex = (q * BITS_PER_ENTRY + p);
+                return STATUS_SUCCESS;
+            }
+        }
+    }
+
+    return STATUS_NOT_FOUND;
+}
+
+
+static
+NTSTATUS
+_MmGetFreePhysicalRangeIndex(
+    _In_ QWORD PageCount,
+    _Out_ QWORD *StartIndex
+)
+{
+    QWORD startIndex = 0;
+    BOOLEAN bStartFound = FALSE;
+    BOOLEAN bEndFound = FALSE;
+    QWORD count = 0;
+
+    for (DWORD q = 0; q < gPhysMemState.PageCount / BITS_PER_ENTRY; q++)
+    {
+        // if the entire QWORD is set it means that these 64 pages are already reserved
+        if ((QWORD)-1 == gPhysMemState.Bitmap[q])
+        {
+            bStartFound = bEndFound = FALSE;
+            count = 0;
+            continue;
+        }
+
+        // test each page
+        for (BYTE p = 0; p < BITS_PER_ENTRY; p++)
+        {
+            if (0 == (gPhysMemState.Bitmap[q] & (1ULL << p)))
+            {
+                if (!bStartFound)
+                {
+                    bStartFound = TRUE;
+                    startIndex = q * BITS_PER_ENTRY + p;
+                }
+                else
+                {
+                    bEndFound = TRUE;
+                }
+
+                count++;
+            }
+            else
+            {
+                bStartFound = bEndFound = FALSE;
+                count = 0;
+            }
+
+            if (count == PageCount)
+            {
+                *StartIndex = startIndex;
+                return STATUS_SUCCESS;
+            }
+        }
+    }
+
+    return STATUS_NOT_FOUND;
 }
 
 
@@ -119,116 +219,135 @@ MmPhysicalManagerInit(
 }
 
 
-//QWORD
-//MmGetFreePhysicalRegion(
-//    _In_ DWORD PageCount
+NTSTATUS
+MmReservePhysicalPage(
+    _In_ QWORD Page
+)
+{
+    QWORD bit = 0;
+
+    Page = PHYPAGE_ALIGN(Page);
+    bit = Page / gPhysMemState.PageSize;
+
+    if (_MmIsBitSet(bit))
+    {
+        return STATUS_PAGE_ALREADY_RESERVED;
+    }
+
+    _MmSetBit(bit);
+    gPhysMemState.FreePages--;
+
+    return STATUS_SUCCESS;
+}
+
+
+NTSTATUS
+MmFreePhysicalPage(
+    _In_ QWORD Page
+)
+{
+    QWORD bit = 0;
+
+    Page = PHYPAGE_ALIGN(Page);
+    bit = Page / gPhysMemState.PageSize;
+
+    if (!_MmIsBitSet(bit))
+    {
+        return STATUS_PAGE_ALREADY_FREE;
+    }
+
+    _MmClearBit(bit);
+    gPhysMemState.FreePages++;
+
+    return STATUS_SUCCESS;
+}
+
+
+NTSTATUS
+MmAllocPhysicalPage(
+    _Inout_ QWORD * Page
+)
+{
+    NTSTATUS status;
+    QWORD pageIndex = 0;
+
+    if (!Page)
+    {
+        return STATUS_INVALID_PARAMETER_1;
+    }
+
+    if (!gPhysMemState.FreePages)
+    {
+        return STATUS_INSUFFICIENT_RESOURCES;
+    }
+
+    status = _MmGetFreePhysicalPageIndex(&pageIndex);
+    if (!NT_SUCCESS(status))
+    {
+        LogWithInfo("[ERROR] _MmGetFreePhysicalPageIndex failed: 0x%08x\n", status);
+        return status;
+    }
+
+    *Page = pageIndex * gPhysMemState.PageSize;
+
+    return MmReservePhysicalPage(*Page);
+}
+
+
+/// not needed for now
+//NTSTATUS
+//MmGetPhysicalRange(
+//    _In_ QWORD PageCount,
+//    _Inout_ QWORD *RangeStart
 //)
 //{
-//    DWORD start = 0;
-//    DWORD end = 0;
-//    DWORD foundPages = 0;
-//    BOOLEAN bStartValid = FALSE;
-//    BOOLEAN bEndValid = FALSE;
+//    NTSTATUS status;
+//    QWORD startIndex = 0;
 //
-//    // simple check
-//    if (PageCount >= gPhysMemState.FreePages)
+//    if (!RangeStart)
 //    {
-//        LogWithInfo("[ERROR] Requested page count is too high: %d\n", PageCount);
-//        return (QWORD)-1;
+//        return STATUS_INVALID_PARAMETER_1;
 //    }
 //
-//    for (DWORD q = 0; q < gPhysMemState.PageCount / BITS_PER_ENTRY; q++)
+//    if (gPhysMemState.FreePages < PageCount)
 //    {
-//        // if the entire QWORD is set, these 64 pages are already reserved and there is no point in checking them
-//        if ((QWORD)-1 == gPhysMemState.Bitmap[q])
+//        return STATUS_INSUFF_SERVER_RESOURCES;
+//    }
+//
+//    status = _MmGetFreePhysicalRangeIndex(PageCount, &startIndex);
+//    if (!NT_SUCCESS(status))
+//    {
+//        LogWithInfo("[ERROR] _MmGetFreePhysicalRangeIndex failed: 0x%08x\n", status);
+//        return status;
+//    }
+//
+//    *RangeStart = startIndex * gPhysMemState.PageSize;
+//
+//    for (QWORD i = 0; i < PageCount; i++)
+//    {
+//        status = MmReservePhysicalPage(i * gPhysMemState.PageSize + *RangeStart);
+//        if (!NT_SUCCESS(status))
 //        {
-//            foundPages = 0;  // also, reset the found count
-//            bStartValid = FALSE;
-//            bEndValid = FALSE;
-//            continue;
-//        }
+//            LogWithInfo("[ERROR] MmReservePhysicalPage failed for %018p: 0x%08x\n", 
+//                i * gPhysMemState.PageSize + *RangeStart, status);
 //
-//        // test each page in the current 64 pages
-//        for (BYTE p = 0; p < BITS_PER_ENTRY; p++)
-//        {
-//            // bit not set => free page
-//            if (!_MmIsBitSet(p + q * BITS_PER_ENTRY))
+//            for (QWORD j = 0; j < i; j++)
 //            {
-//                foundPages++;
-//
-//                if (!bStartValid)
-//                {
-//                    start = p + q * BITS_PER_ENTRY;
-//                    bStartValid = TRUE;
-//                }
-//                else if (!bEndValid)
-//                {
-//                    end = p + q * BITS_PER_ENTRY;
-//                    bEndValid = TRUE;
-//                }
-//                else
-//                {
-//                    // wtf?
-//                    LogWithInfo("[WARNING] Valid start (0x%08x) and end (0x%08x) with page count: %d/%d\n", start, end, foundPages, PageCount);
-//                    break;
-//                }
-//            }
-//            // reset everything
-//            else
-//            {
-//                bStartValid = FALSE;
-//                bEndValid = FALSE;
-//                start = (QWORD)-1;
-//                end = (QWORD)-1;
-//                foundPages = 0;
+//                MmFreePhysicalPage(j * gPhysMemState.PageSize + *RangeStart);
 //            }
 //
-//            // found all the pages we needed
-//            if (foundPages == PageCount)
-//            {
-//                break;
-//            }
+//            return status;
 //        }
 //    }
 //
-//    if (foundPages == PageCount)
-//    {
-//        return start;
-//    }
-//
-//    return (QWORD)-1;
+//    return STATUS_SUCCESS;
 //}
-//
-//
-//QWORD
-//MmAllocPhysicalRegion(
-//    _In_ DWORD RegionSize
-//)
-//{
-//    DWORD pages = RegionSize / gPhysMemState.PageSize;
-//    QWORD start = 0;
-//    QWORD end = 0;
-//
-//    if (pages % gPhysMemState.PageSize)
-//    {
-//        pages++;
-//    }
-//
-//    start = MmGetFreePhysicalRegion((DWORD)pages);
-//    if ((QWORD)-1 == start)
-//    {
-//        LogWithInfo("[ERROR] MmGetFreePhysicalRegion failed for %d\n", pages);
-//        return (QWORD)-1;
-//    }
-//
-//    end = start + pages;
-//
-//    // now simply reserve
-//    for (QWORD i = start; i < end; i++)
-//    {
-//        _MmSetBit(i);
-//    }
-//
-//    // return the first page in the region
-//    return start * gPhysMemState.PageSize;
-//}
+
+
+QWORD
+MmGetTotalFreeMemory(
+    VOID
+)
+{
+    return gPhysMemState.FreePages * gPhysMemState.PageSize;
+}
