@@ -14,6 +14,7 @@ DbgPanicWithInfo(
 {
     VgaClearScreenToColor(vgaColorBlue, vgaColorBlue);
     VgaSetForeground(vgaColorRed);
+    VgaSetBackground(vgaColorBlue);
 
     Log("FATAL ERROR: %s\n", Reason ? Reason : "UNKNOWN");
 
