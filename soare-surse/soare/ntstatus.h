@@ -2271,4 +2271,7 @@
 #define NT_WARNING(Status) ((((ULONG)(Status)) >> 30) == 2)
 #define NT_ERROR(Status) ((((ULONG)(Status)) >> 30) == 3)
 
+#define STATUS_PAGE_ALREADY_RESERVED                MAKE_STATUS(STATUS_SEVERITY_ERROR, SOARE_FACILITY, 0x0001)
+#define STATUS_PAGE_ALREADY_FREE                    MAKE_STATUS(STATUS_SEVERITY_ERROR, SOARE_FACILITY, 0x0002)
+
 #endif // !_NTSTATUS_H_
