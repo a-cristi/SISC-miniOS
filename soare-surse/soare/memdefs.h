@@ -20,4 +20,9 @@
 #define PAGE_SIZE_2M    (2 * ONE_MB)
 #define PAGE_SIZE_1G    (1 * ONE_GB)
 
+#define PAGE_SIZE       PAGE_SIZE_4K        // default page size
+
+#define PAGE_ALIGN(Va)      ((PVOID)((QWORD)(Va) & ~(PAGE_SIZE - 1)))
+#define PHYPAGE_ALIGN(Va)   ((QWORD)((QWORD)(Va) & ~(PAGE_SIZE - 1)))
+
 #endif // !_MEMDEFS_H_
