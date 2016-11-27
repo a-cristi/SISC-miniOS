@@ -28,6 +28,8 @@ typedef struct _PHYSMEM_STATE
     DWORD       PageSize;   // one bit in the bitmap describes one page of this size
     DWORD       PageCount;  // how many bits we have; Bitmap will contain PageCount/sizeof(Bitmap[0]) entries
     DWORD       FreePages;  // number of current free pages
+
+    QWORD       EndOfMemory;
 } PHYSMEM_STATE, *PPHYSMEM_STATE;
 
 static PHYSMEM_STATE gPhysMemState;
@@ -206,6 +208,7 @@ MmPhysicalManagerInit(
     memset(&gPhysMemState, 0, sizeof(gPhysMemState));
     gPhysMemState.Bitmap = BitmapAddress;
     gPhysMemState.PageSize = PAGE_SIZE_4K;
+    gPhysMemState.EndOfMemory = endOfMemory;
     // safe cast
     gPhysMemState.PageCount = (DWORD)(endOfMemory / gPhysMemState.PageSize);
 
@@ -214,6 +217,28 @@ MmPhysicalManagerInit(
     // reserve every page for now
     memset(gPhysMemState.Bitmap, 0xFF, gPhysMemState.PageCount);
     gPhysMemState.FreePages = 0;
+
+    // free only the pages that are usable in the memory map
+    for (DWORD i = 0; i < gBootMemoryMapEntries; i++)
+    {
+        if (memTypeUsable == gBootMemoryMap[i].Type)
+        {
+            QWORD start = ROUND_DOWN(gBootMemoryMap[i].Base, gPhysMemState.PageSize);
+            QWORD end = start + ROUND_UP(gBootMemoryMap[i].Length, gPhysMemState.PageSize);
+
+            while (start < end)
+            {
+                NTSTATUS status = MmFreePhysicalPage(start);
+                if (!NT_SUCCESS(status))
+                {
+                    LogWithInfo("[ERROR] MmFreePhysicalPage failed for %018p: 0x%08x\n", start, status);
+                    return FALSE;
+                }
+
+                start += gPhysMemState.PageSize;
+            }
+        }
+    }
 
     return TRUE;
 }
@@ -225,6 +250,11 @@ MmReservePhysicalPage(
 )
 {
     QWORD bit = 0;
+
+    if (Page > gPhysMemState.EndOfMemory)
+    {
+        return STATUS_NOT_FOUND;
+    }
 
     Page = PHYPAGE_ALIGN(Page);
     bit = Page / gPhysMemState.PageSize;
@@ -247,6 +277,11 @@ MmFreePhysicalPage(
 )
 {
     QWORD bit = 0;
+
+    if (Page > gPhysMemState.EndOfMemory)
+    {
+        return STATUS_NOT_FOUND;
+    }
 
     Page = PHYPAGE_ALIGN(Page);
     bit = Page / gPhysMemState.PageSize;

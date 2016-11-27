@@ -47,6 +47,8 @@ void EntryPoint(
         PANIC("Unable to initialize the physical memory manager\n");
     }
 
+    Log("%018p bytes (%d MB) of physical memory are available\n", MmGetTotalFreeMemory(), ByteToMb(MmGetTotalFreeMemory()));
+
     Log("> Initializing PIC... ");
     PicInitialize();
     Log("Done!\n");
