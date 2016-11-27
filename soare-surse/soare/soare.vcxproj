@@ -238,6 +238,7 @@
     <ClInclude Include="log.h" />
     <ClInclude Include="mbflg.h" />
     <ClInclude Include="mb_util.h" />
+    <ClInclude Include="mem.h" />
     <ClInclude Include="memdefs.h" />
     <ClInclude Include="memmap.h" />
     <ClInclude Include="memory.h" />
@@ -255,6 +256,7 @@
     <ClCompile Include="kernel.c" />
     <ClCompile Include="log.c" />
     <ClCompile Include="main.c" />
+    <ClCompile Include="mem.c" />
     <ClCompile Include="memmap.c" />
     <ClCompile Include="memory.c" />
     <ClCompile Include="mb_util.c" />

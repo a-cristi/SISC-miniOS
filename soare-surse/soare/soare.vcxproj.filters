@@ -86,6 +86,9 @@
     <ClCompile Include="debugger.c">
       <Filter>Source Files\debug</Filter>
     </ClCompile>
+    <ClCompile Include="mem.c">
+      <Filter>Source Files\memory</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="boot.h">
@@ -144,6 +147,9 @@
     </ClInclude>
     <ClInclude Include="ntstatus.h">
       <Filter>Header Files\status</Filter>
+    </ClInclude>
+    <ClInclude Include="mem.h">
+      <Filter>Header Files\memory</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
