@@ -153,7 +153,9 @@ dq              0x1C00087       ; mapping for physical 28-30M, to virtual 1T+26M
 dq              0x1E00087       ; mapping for physical 30-32M, to virtual 1T+28M-to-1T+30M range, page
 dq              0x2000087       ; mapping for physical 32-34M, to virtual 1T+30M-to-1T+32M range, page
 dq              0x2200087       ; mapping for physical 34-36M, to virtual 1T+32M-to-1T+34M range, page
-times 495 dq    0
+dq              0x2400087       ; mapping for physical 36-38M, to virtual 1T+34M-to-1T+36M range, page
+dq              0x2600087       ; mapping for physical 38-40M, to virtual 1T+36M-to-1T+38M range, page
+times 493 dq    0
 
 __pt_table:
 dq              0x000000                ; P = 0, NOT preset, to avoid NULL pointers
