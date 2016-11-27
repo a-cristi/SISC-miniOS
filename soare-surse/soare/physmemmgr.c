@@ -212,6 +212,12 @@ MmPhysicalManagerInit(
     // safe cast
     gPhysMemState.PageCount = (DWORD)(endOfMemory / gPhysMemState.PageSize);
 
+    if (gPhysMemState.PageCount > 4 * ONE_MB)
+    {
+        LogWithInfo("[ERROR] Not enough memory is available for the physical memory bitmap\n");
+        return FALSE;
+    }
+
     Log("[PHYSMEM] Page count: %d\n", gPhysMemState.PageCount);
 
     // reserve every page for now
