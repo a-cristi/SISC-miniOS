@@ -1,5 +1,6 @@
 #include "defs.h"
 #include "memdefs.h"
+#include "ntstatus.h"
 #include "boot.h"
 #include "screen.h"
 #include "log.h"
@@ -18,6 +19,8 @@ void EntryPoint(
     _In_ PMULTIBOOT_INFO MultiBootInfo
 )
 {
+    NTSTATUS status;
+
     VgaInit(VGA_MEMORY_BUFFER, vgaColorWhite, vgaColorBlack);
     Log("Built on %s %s\n", __DATE__, __TIME__);
 
@@ -45,6 +48,14 @@ void EntryPoint(
     {
         Log("[FATAL ERROR] Failed to init the physical memory manager.\n");
         PANIC("Unable to initialize the physical memory manager\n");
+    }
+
+    // reserve the kernel space
+    status = MmReservePhysicalRange(gKernelGlobalData.PhysicalBase, gKernelGlobalData.KernelSize);
+    if (!NT_SUCCESS(status))
+    {
+        Log("[FATAL ERROR] Failed to reserve the kernel memory area.\n");
+        PANIC("Unable to reserve enough physical memory for the kernel\n");
     }
 
     Log("%018p bytes (%d MB) of physical memory are available\n", MmGetTotalFreeMemory(), ByteToMb(MmGetTotalFreeMemory()));
