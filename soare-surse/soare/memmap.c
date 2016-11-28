@@ -99,7 +99,7 @@ MmGetMapEntryForAddress(
 
     for (DWORD i = 0; i < gBootMemoryMapEntries; i++)
     {
-        if (gBootMemoryMap[i].Base >= PhysicalAddress && gBootMemoryMap[i].Base + gBootMemoryMap[i].Length < PhysicalAddress)
+        if (gBootMemoryMap[i].Base <= PhysicalAddress && gBootMemoryMap[i].Base + gBootMemoryMap[i].Length > PhysicalAddress)
         {
             Entry->Base = gBootMemoryMap[i].Base;
             Entry->Length = gBootMemoryMap[i].Length;
