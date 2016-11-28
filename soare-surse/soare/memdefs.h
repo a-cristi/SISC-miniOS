@@ -25,6 +25,10 @@
 #define PAGE_ALIGN(Va)      ((PVOID)((QWORD)(Va) & ~(PAGE_SIZE - 1)))
 #define PHYPAGE_ALIGN(Va)   ((QWORD)((QWORD)(Va) & ~(PAGE_SIZE - 1)))
 
+#define SMALL_PAGE_COUNT(sz)    (ROUND_UP((sz), PAGE_SIZE_4K) / PAGE_SIZE_4K)
+#define LARGE_PAGE_COUNT(sz)    (ROUND_UP((sz), PAGE_SIZE_2M) / PAGE_SIZE_2M)
+#define SUPER_PAGE_COUNT(sz)    (ROUND_UP((sz), PAGE_SIZE_1G) / PAGE_SIZE_1G)
+
 //
 // PTE flags
 //
