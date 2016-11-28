@@ -250,6 +250,7 @@
     <ClInclude Include="screen.h" />
     <ClInclude Include="string.h" />
     <ClInclude Include="varargs.h" />
+    <ClInclude Include="virtmemmgr.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="debugger.c" />
@@ -266,6 +267,7 @@
     <ClCompile Include="screen.c" />
     <ClCompile Include="snprintf.c" />
     <ClCompile Include="string.c" />
+    <ClCompile Include="virtmemmgr.c" />
   </ItemGroup>
   <ItemGroup>
     <YASM Include="__init.yasm">

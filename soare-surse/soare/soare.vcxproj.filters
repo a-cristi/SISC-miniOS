@@ -89,6 +89,9 @@
     <ClCompile Include="mem.c">
       <Filter>Source Files\memory</Filter>
     </ClCompile>
+    <ClCompile Include="virtmemmgr.c">
+      <Filter>Source Files\memory</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="boot.h">
@@ -149,6 +152,9 @@
       <Filter>Header Files\status</Filter>
     </ClInclude>
     <ClInclude Include="mem.h">
+      <Filter>Header Files\memory</Filter>
+    </ClInclude>
+    <ClInclude Include="virtmemmgr.h">
       <Filter>Header Files\memory</Filter>
     </ClInclude>
   </ItemGroup>
