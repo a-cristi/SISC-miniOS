@@ -10,6 +10,7 @@
 #include "kernel.h"
 #include "memmap.h"
 #include "physmemmgr.h"
+#include "virtmemmgr.h"
 #include "panic.h"
 #include "debugger.h"
 
@@ -20,6 +21,7 @@ void EntryPoint(
 )
 {
     NTSTATUS status;
+    QWORD totalMemory;
 
     VgaInit(VGA_MEMORY_BUFFER, vgaColorWhite, vgaColorBlack);
     Log("Built on %s %s\n", __DATE__, __TIME__);
@@ -44,6 +46,8 @@ void EntryPoint(
     MbDumpMemoryMap(MultiBootInfo);
     MmInitMemoryMapFromMultiboot(MultiBootInfo->mmap_addr, MultiBootInfo->mmap_length);
 
+    totalMemory = (MultiBootInfo->mem_lower + MultiBootInfo->mem_upper) * ONE_KB;
+
     if (!MmPhysicalManagerInit((PVOID)(gKernelGlobalData.VirtualBase + gKernelGlobalData.KernelSize)))
     {
         Log("[FATAL ERROR] Failed to init the physical memory manager.\n");
@@ -58,7 +62,15 @@ void EntryPoint(
         PANIC("Unable to reserve enough physical memory for the kernel\n");
     }
 
-    Log("%018p bytes (%d MB) of physical memory are available\n", MmGetTotalFreeMemory(), ByteToMb(MmGetTotalFreeMemory()));
+    Log("%018p bytes (%d MB) of physical memory are available out of %018p bytes (%d MB)\n", 
+        MmGetTotalFreeMemory(), ByteToMb(MmGetTotalFreeMemory()), totalMemory, ByteToMb(totalMemory));
+
+    status = MmVirtualManagerInit(totalMemory);
+    if (!NT_SUCCESS(status))
+    {
+        Log("[FATAL ERROR] MmVirtualManagerInit: 0x%08x\n", status);
+        PANIC("Failed to initialize the virtual memory manager");
+    }
 
     Log("> Initializing PIC... ");
     PicInitialize();
