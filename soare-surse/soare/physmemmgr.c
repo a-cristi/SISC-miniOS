@@ -2,6 +2,7 @@
 #include "memdefs.h"
 #include "ntstatus.h"
 #include "memmap.h"
+#include "mem.h"
 #include "physmemmgr.h"
 #include "log.h"
 
@@ -35,6 +36,50 @@ typedef struct _PHYSMEM_STATE
 static PHYSMEM_STATE gPhysMemState;
 
 #define BITS_PER_ENTRY      (sizeof(QWORD) * 8)
+
+
+static
+BOOLEAN
+_MmChangeContigousPhysicalRangeState(
+    _In_ QWORD Base,
+    _In_ QWORD Length,
+    _In_ BOOLEAN Reserve
+)
+{
+    QWORD page = ROUND_DOWN(Base, gPhysMemState.PageSize);
+    QWORD end;
+
+    end = ROUND_UP(page + Length, gPhysMemState.PageSize);
+
+    Log("[PHYMEM] %s range [%018p, %018p)...\n", Reserve ? "Reserving" : "Freeing", page, end);
+
+    while (page < end)
+    {
+        if (Reserve)
+        {
+            NTSTATUS status = MmReservePhysicalPage(page);
+            if (!NT_SUCCESS(status) && STATUS_PAGE_ALREADY_RESERVED != status)
+            {
+                LogWithInfo("[ERROR] MmReservePhysicalPage failed for %018p: 0x%08x\n", page, status);
+                return FALSE;
+            }
+        }
+        else
+        {
+            NTSTATUS status = MmFreePhysicalPage(page);
+            if (!NT_SUCCESS(status) && STATUS_PAGE_ALREADY_FREE != status)
+            {
+                LogWithInfo("[ERROR] MmFreePhysicalPage failed for %018p: 0x%08x\n", page, status);
+                return FALSE;
+            }
+        }
+
+        page += gPhysMemState.PageSize;
+    }
+
+    return TRUE;
+}
+
 
 static __forceinline
 BOOLEAN
@@ -190,6 +235,8 @@ MmPhysicalManagerInit(
 )
 {
     QWORD endOfMemory = 0;
+    QWORD paBitmap = 0;
+    NTSTATUS status;
 
     if (!MmA20Enable())
     {
@@ -232,18 +279,27 @@ MmPhysicalManagerInit(
             QWORD start = ROUND_DOWN(gBootMemoryMap[i].Base, gPhysMemState.PageSize);
             QWORD end = start + ROUND_UP(gBootMemoryMap[i].Length, gPhysMemState.PageSize);
 
-            while (start < end)
+            if (!_MmChangeContigousPhysicalRangeState(start, end - start, FALSE))
             {
-                NTSTATUS status = MmFreePhysicalPage(start);
-                if (!NT_SUCCESS(status))
-                {
-                    LogWithInfo("[ERROR] MmFreePhysicalPage failed for %018p: 0x%08x\n", start, status);
-                    return FALSE;
-                }
-
-                start += gPhysMemState.PageSize;
+                LogWithInfo("[ERROR] Failed to free the physical range [%018p, %018p)\n", start, end);
+                return FALSE;
             }
         }
+    }
+
+    // get the physical address of the bitmap
+    status = MmTranslateSystemVirtualAddress(BitmapAddress, &paBitmap, NULL);
+    if (!NT_SUCCESS(status))
+    {
+        LogWithInfo("[ERROR] MmTranslateSystemVirtualAddress failed for %018p: 0x%08x\n", BitmapAddress, status);
+        return FALSE;
+    }
+
+    // and mark the bitmap as reserved
+    if (!_MmChangeContigousPhysicalRangeState(paBitmap, gPhysMemState.PageCount, TRUE))
+    {
+        LogWithInfo("[ERROR] Failed to reserve the physical range [%018p, %018p)\n", paBitmap, paBitmap + gPhysMemState.PageCount);
+        return FALSE;
     }
 
     return TRUE;
