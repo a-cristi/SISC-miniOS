@@ -12,6 +12,12 @@ MmReservePhysicalPage(
 );
 
 NTSTATUS
+MmReservePhysicalRange(
+    _In_ QWORD Base,
+    _In_ QWORD Length
+);
+
+NTSTATUS
 MmFreePhysicalPage(
     _In_ QWORD Page
 );
@@ -24,6 +30,11 @@ MmAllocPhysicalPage(
 QWORD
 MmGetTotalFreeMemory(
     VOID
+);
+
+BOOLEAN
+MmIsPhysicalPageFree(
+    _In_ QWORD Page
 );
 
 #endif // !_PHYSMEMMGR_H_

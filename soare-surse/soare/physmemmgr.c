@@ -334,6 +334,41 @@ MmReservePhysicalPage(
 
 
 NTSTATUS
+MmReservePhysicalRange(
+    _In_ QWORD Base,
+    _In_ QWORD Length
+)
+{
+    NTSTATUS status;
+
+    if (Base % gPhysMemState.PageSize || (Base + Length) % gPhysMemState.PageSize)
+    {
+        return STATUS_NOT_SUPPORTED;
+    }
+    
+    // first, make sure that the range is free
+    for (QWORD page = Base; page < Base + Length; page += gPhysMemState.PageSize)
+    {
+        if (!MmIsPhysicalPageFree(page))
+        {
+            return STATUS_PAGE_ALREADY_RESERVED;
+        }
+    }
+
+    // reserve
+    status = _MmChangeContigousPhysicalRangeState(Base, Length, TRUE);
+    if (!NT_SUCCESS(status))
+    {
+        LogWithInfo("[ERROR] _MmChangeContigousPhysicalRangeState failed for [%018p, %018p): 0x%08x\n",
+            Base, Base + Length, status);
+        return status;
+    }
+
+    return STATUS_SUCCESS;
+}
+
+
+NTSTATUS
 MmFreePhysicalPage(
     _In_ QWORD Page
 )
@@ -388,6 +423,25 @@ MmAllocPhysicalPage(
     *Page = pageIndex * gPhysMemState.PageSize;
 
     return MmReservePhysicalPage(*Page);
+}
+
+
+BOOLEAN
+MmIsPhysicalPageFree(
+    _In_ QWORD Page
+)
+{
+    QWORD bit = 0;
+
+    if (Page > gPhysMemState.EndOfMemory)
+    {
+        return FALSE;
+    }
+
+    Page = PHYPAGE_ALIGN(Page);
+    bit = Page / gPhysMemState.PageSize;
+
+    return !_MmIsBitSet(bit);
 }
 
 
