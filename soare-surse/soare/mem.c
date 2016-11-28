@@ -60,3 +60,36 @@ _cleanup_and_exit:
 
     return status;
 }
+
+
+VOID
+MmGetIndexesForVa(
+    _In_ PVOID VirtualAddress,
+    _Out_opt_ WORD *Pml4Index,
+    _Out_opt_ WORD *PdpIndex,
+    _Out_opt_ WORD *PdIndex,
+    _Out_opt_ WORD *PtIndex
+)
+{
+    QWORD va = (QWORD)VirtualAddress;
+
+    if (Pml4Index)
+    {
+        *Pml4Index = (WORD)((va & PML4_IDX_MASK) >> PML4_IDX_SHIFT);
+    }
+
+    if (PdpIndex)
+    {
+        *PdpIndex = (WORD)((va & PDP_IDX_MASK) >> PDP_IDX_SHIFT);
+    }
+
+    if (PdIndex)
+    {
+        *PdIndex = (WORD)((va & PD_IDX_MASK) >> PD_IDX_SHIFT);
+    }
+
+    if (PtIndex)
+    {
+        *PtIndex = (WORD)((va & PT_IDX_MASK) >> PT_IDX_SHIFT);
+    }
+}

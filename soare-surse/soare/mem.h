@@ -11,4 +11,13 @@ MmTranslateVirtualAddressWithCr3(
 
 #define MmTranslateSystemVirtualAddress(Va, Pa, Ps)     MmTranslateVirtualAddressWithCr3(__readcr3(), (Va), (Pa), (Ps))
 
+VOID
+MmGetIndexesForVa(
+    _In_ PVOID VirtualAddress,
+    _Out_opt_ WORD *Pml4Index,
+    _Out_opt_ WORD *PdpIndex,
+    _Out_opt_ WORD *PdIndex,
+    _Out_opt_ WORD *PtIndex
+);
+
 #endif // !_MEM_H_
