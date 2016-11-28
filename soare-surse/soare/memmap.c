@@ -1,4 +1,5 @@
 #include "defs.h"
+#include "ntstatus.h"
 #include "memmap.h"
 #include "multiboot.h"
 #include "memdefs.h"
@@ -82,4 +83,31 @@ MmInitMemoryMapFromMultiboot(
     Log("[MMAP] Parsed %d entries for a total size of 0x%llx Bytes (%d MB)\n", 
         gBootMemoryMapEntries, gBootMemoryLimit, ByteToMb(gBootMemoryLimit));
     MmDumpMemoryMap(gBootMemoryMap, gBootMemoryMapEntries);
+}
+
+
+NTSTATUS
+MmGetMapEntryForAddress(
+    _In_ QWORD PhysicalAddress,
+    _Out_ MMAP_ENTRY * Entry
+)
+{
+    if (!Entry)
+    {
+        return STATUS_INVALID_PARAMETER_2;
+    }
+
+    for (DWORD i = 0; i < gBootMemoryMapEntries; i++)
+    {
+        if (gBootMemoryMap[i].Base >= PhysicalAddress && gBootMemoryMap[i].Base + gBootMemoryMap[i].Length < PhysicalAddress)
+        {
+            Entry->Base = gBootMemoryMap[i].Base;
+            Entry->Length = gBootMemoryMap[i].Length;
+            Entry->Type = gBootMemoryMap[i].Type;
+
+            return STATUS_SUCCESS;
+        }
+    }
+
+    return STATUS_NOT_FOUND;
 }

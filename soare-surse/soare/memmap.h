@@ -33,4 +33,10 @@ MmInitMemoryMapFromMultiboot(
     _In_ DWORD MapLength
 );
 
+NTSTATUS
+MmGetMapEntryForAddress(
+    _In_ QWORD PhysicalAddress,
+    _Out_ MMAP_ENTRY * Entry
+);
+
 #endif // !_MEM_MAP_H_
