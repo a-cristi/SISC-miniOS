@@ -25,4 +25,58 @@
 #define PAGE_ALIGN(Va)      ((PVOID)((QWORD)(Va) & ~(PAGE_SIZE - 1)))
 #define PHYPAGE_ALIGN(Va)   ((QWORD)((QWORD)(Va) & ~(PAGE_SIZE - 1)))
 
+//
+// PTE flags
+//
+#define PTE_P           0x0001
+#define PTE_RW          0x0002
+#define PTE_US          0x0004
+#define PTE_PWT         0x0008
+#define PTE_PCD         0x0010
+#define PTE_A           0x0020
+#define PTE_D           0x0040
+#define PTE_PAT         0x0080
+#define PTE_XD          0x8000000000000000
+
+//
+// PDE flags
+//
+#define PDE_P           0x0001
+#define PDE_RW          0x0002
+#define PDE_US          0x0004
+#define PDE_PWT         0x0008
+#define PDE_PCD         0x0010
+#define PDE_A           0x0020
+#define PDE_D           0x0040   
+#define PDE_PS          0x0080
+#define PDE_XD          0x8000000000000000
+
+//
+// PDPE flags
+//
+#define PDPE_P          0x0001
+#define PDPE_RW         0x0002
+#define PDPE_US         0x0004
+#define PDPE_PWT        0x0008
+#define PDPE_PCD        0x0010
+#define PDPE_A          0x0020
+#define PDPE_PS         0x0080
+#define PDPE_XD         0x8000000000000000
+
+//
+// PML4E flags
+//
+#define PML4E_P         0x0001
+#define PML4E_RW        0x0002
+#define PML4E_US        0x0004
+#define PML4E_PWT       0x0008
+#define PML4E_PCD       0x0010
+#define PML4E_A         0x0020
+#define PML4E_PS        0x0080
+#define PML4E_XD        0x8000000000000000
+
+#define PAGE_MASK       0xFFFFFFFFFFFFF000
+#define PAGE_OFFSET     0xFFF
+#define PHYS_PAGE_MASK  0x000FFFFFFFFFF000
+
 #endif // !_MEMDEFS_H_
