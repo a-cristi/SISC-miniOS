@@ -22,6 +22,8 @@ void EntryPoint(
 {
     NTSTATUS status;
     QWORD totalMemory;
+    QWORD pmmgrStart;
+    QWORD pmmgEnd;
 
     VgaInit(VGA_MEMORY_BUFFER, vgaColorWhite, vgaColorBlack);
     Log("Built on %s %s\n", __DATE__, __TIME__);
@@ -62,10 +64,16 @@ void EntryPoint(
         PANIC("Unable to reserve enough physical memory for the kernel\n");
     }
 
+    pmmgrStart = 0;
+    pmmgEnd = 0;
+    MmGetPmmgrReservedPhysicalRange(&pmmgrStart, &pmmgEnd);
+
     Log("%018p bytes (%d MB) of physical memory are available out of %018p bytes (%d MB)\n", 
         MmGetTotalFreeMemory(), ByteToMb(MmGetTotalFreeMemory()), totalMemory, ByteToMb(totalMemory));
 
-    status = MmVirtualManagerInit(totalMemory);
+    status = MmVirtualManagerInit(totalMemory, 
+        gKernelGlobalData.VirtualBase, gKernelGlobalData.PhysicalBase, 
+        gKernelGlobalData.KernelSize + pmmgEnd - pmmgrStart);
     if (!NT_SUCCESS(status))
     {
         Log("[FATAL ERROR] MmVirtualManagerInit: 0x%08x\n", status);

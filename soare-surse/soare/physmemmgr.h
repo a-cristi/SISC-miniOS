@@ -42,4 +42,10 @@ MmGetTotalNumberOfPhysicalPages(
     VOID
 );
 
+VOID
+MmGetPmmgrReservedPhysicalRange(
+    _Out_opt_ QWORD *Start,
+    _Out_opt_ QWORD *End
+);
+
 #endif // !_PHYSMEMMGR_H_

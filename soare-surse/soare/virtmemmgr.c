@@ -179,7 +179,10 @@ _MmPhase1MapPaRangeToVaRange(
 
 NTSTATUS
 MmVirtualManagerInit(
-    _In_ QWORD MaximumMemorySize
+    _In_ QWORD MaximumMemorySize,
+    _In_ QWORD KernelPaStart,
+    _In_ QWORD KernelVaStart,
+    _In_ QWORD KernelRegionLength
 )
 {
     QWORD pteCount;
@@ -231,6 +234,16 @@ MmVirtualManagerInit(
     Log("[VIRTMEM] Mapped [%018p %018p) VA -> [%018p, %018p) PA\n",
         VA_SPACE_VIRTMMGR, VA_SPACE_VIRTMMGR + gPhase1TableRangeEnd - gPhase1TableRangeStart,
         gPhase1TableRangeEnd, gPhase1TableRangeEnd + gPhase1TableRangeEnd - gPhase1TableRangeStart);
+
+    if (!_MmPhase1MapPaRangeToVaRange(pPml4, KernelVaStart, KernelPaStart, KernelRegionLength))
+    {
+        LogWithInfo("[ERROR] _MmPhase1MapPaRangeToVaRange failed");
+        return STATUS_INSUFFICIENT_RESOURCES;
+    }
+
+    Log("[VIRTMEM] Mapped [%018p %018p) VA -> [%018p, %018p) PA\n",
+        KernelVaStart, KernelVaStart + KernelRegionLength,
+        KernelPaStart, KernelPaStart + KernelRegionLength);
 
     return STATUS_SUCCESS;
 }

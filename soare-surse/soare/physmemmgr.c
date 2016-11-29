@@ -31,6 +31,8 @@ typedef struct _PHYSMEM_STATE
     DWORD       FreePages;  // number of current free pages
 
     QWORD       EndOfMemory;
+    QWORD       ReservedPaStart;
+    QWORD       ReservedPaEnd;
 } PHYSMEM_STATE, *PPHYSMEM_STATE;
 
 static PHYSMEM_STATE gPhysMemState;
@@ -296,6 +298,8 @@ MmPhysicalManagerInit(
     }
 
     Log("Bitmap at [%018p, %018p)\n", paBitmap, paBitmap + gPhysMemState.PageCount);
+    gPhysMemState.ReservedPaStart = paBitmap;
+    gPhysMemState.ReservedPaEnd = paBitmap + gPhysMemState.PageCount;
 
     // and mark the bitmap as reserved
     if (!_MmChangeContigousPhysicalRangeState(paBitmap, gPhysMemState.PageCount, TRUE))
@@ -520,4 +524,22 @@ MmGetTotalNumberOfPhysicalPages(
 )
 {
     return gPhysMemState.PageCount;
+}
+
+
+VOID
+MmGetPmmgrReservedPhysicalRange(
+    _Out_opt_ QWORD *Start,
+    _Out_opt_ QWORD *End
+)
+{
+    if (Start)
+    {
+        *Start = gPhysMemState.ReservedPaStart;
+    }
+
+    if (End)
+    {
+        *End = gPhysMemState.ReservedPaEnd;
+    }
 }
