@@ -302,6 +302,14 @@ MmPhysicalManagerInit(
         return FALSE;
     }
 
+    // also, reserve the first page
+    status = MmReservePhysicalPage(0);
+    if (!NT_SUCCESS(status) && STATUS_PAGE_ALREADY_RESERVED != status)
+    {
+        LogWithInfo("[ERROR] MmReservePhysicalPage failed for 0x0: 0x%08x\n", status);
+        return FALSE;
+    }
+
     return TRUE;
 }
 
