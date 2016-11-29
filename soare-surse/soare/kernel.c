@@ -13,6 +13,6 @@ KeInitGlobal(
     
     gKernelGlobalData.PhysicalBase = KBASE_PHYSICAL;
     gKernelGlobalData.VirtualBase = KBASE_VIRTUAL;
-    gKernelGlobalData.KernelSize = 32 * ONE_MB;
+    gKernelGlobalData.KernelSize = 8 * ONE_MB;
     gKernelGlobalData.Phase = 1;
 }
