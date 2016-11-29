@@ -2,6 +2,7 @@
 #include "memdefs.h"
 #include "ntstatus.h"
 #include "log.h"
+#include "physmemmgr.h"
 
 #define PTE_COUNT   512
 
@@ -20,6 +21,80 @@ typedef struct _PT
 #define PAGES_TO_PTES(pages)    (ROUND_UP((pages), PTE_COUNT) / PTE_COUNT)
 
 static_assert(sizeof(PT) == PAGE_SIZE_4K, "PT size not 4K!");
+
+
+static
+NTSTATUS
+_MmGetFreePtEntryInOneToOneMapping(
+    _Out_ PPT *Pt,
+    _Out_ DWORD *Index
+)
+//
+// Does a linear search inside the temporary one-to-one page tables
+// IMPORTANT: do not use after we switch to the final page tables!
+//
+{
+    PPT pPml4;
+
+    pPml4 = (PT *)(__readcr3() & PHYS_PAGE_MASK);
+
+    for (DWORD pml4i = 0; pml4i < PTE_COUNT; pml4i++)
+    {
+        PPT pPdp;
+        PTE pml4e = pPml4->Entries[pml4i];
+
+        // skip non present entries
+        if (!(pml4e & PML4E_P))
+        {
+            continue;
+        }
+
+        pPdp = (PT *)(pml4e & PHYS_PAGE_MASK);
+
+        for (DWORD pdpi = 0; pdpi < PTE_COUNT; pdpi++)
+        {
+            PPT pPd;
+            PTE pdpe = pPdp->Entries[pdpi];
+
+            // skip non present and huge page entries
+            if ((!(pdpe & PDPE_P)) || (pdpe & PDPE_PS))
+            {
+                continue;
+            }
+
+            pPd = (PT *)(pdpe & PHYS_PAGE_MASK);
+
+            for (DWORD pdi = 0; pdi < PTE_COUNT; pdi++)
+            {
+                PPT pPt;
+                PTE pde = pPd->Entries[pdi];
+
+                // skip non present and huge page entries
+                if ((!(pde & PDE_P)) || (pde & PDE_PS))
+                {
+                    continue;
+                }
+
+                pPt = (PT *)(pde & PHYS_PAGE_MASK);
+
+                for (DWORD pti = 0; pti < PTE_COUNT; pti++)
+                {
+                    PTE pte = pPt->Entries[pti];
+
+                    // we want a free entry
+                    if (!(pte & PTE_P))
+                    {
+                        *Pt = pPt;
+                        *Index = pti;
+                        return STATUS_SUCCESS;
+                    }
+                }
+            }
+        }
+    }
+
+    return STATUS_NOT_FOUND;
+}
 
 
 NTSTATUS
