@@ -37,4 +37,9 @@ MmIsPhysicalPageFree(
     _In_ QWORD Page
 );
 
+QWORD
+MmGetTotalNumberOfPhysicalPages(
+    VOID
+);
+
 #endif // !_PHYSMEMMGR_H_

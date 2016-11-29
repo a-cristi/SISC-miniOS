@@ -49,7 +49,7 @@ _MmChangeContigousPhysicalRangeState(
     QWORD page = ROUND_DOWN(Base, gPhysMemState.PageSize);
     QWORD end;
 
-    end = ROUND_UP(page + Length, gPhysMemState.PageSize);
+    end = page + ROUND_UP(Length, gPhysMemState.PageSize);
 
     Log("[PHYMEM] %s range [%018p, %018p)...\n", Reserve ? "Reserving" : "Freeing", page, end);
 
@@ -295,6 +295,8 @@ MmPhysicalManagerInit(
         return FALSE;
     }
 
+    Log("Bitmap at [%018p, %018p)\n", paBitmap, paBitmap + gPhysMemState.PageCount);
+
     // and mark the bitmap as reserved
     if (!_MmChangeContigousPhysicalRangeState(paBitmap, gPhysMemState.PageCount, TRUE))
     {
@@ -509,4 +511,13 @@ MmGetTotalFreeMemory(
 )
 {
     return gPhysMemState.FreePages * gPhysMemState.PageSize;
+}
+
+
+QWORD
+MmGetTotalNumberOfPhysicalPages(
+    VOID
+)
+{
+    return gPhysMemState.PageCount;
 }
