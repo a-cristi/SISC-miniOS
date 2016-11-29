@@ -99,4 +99,6 @@
 #define OFFSET_2M_MASK  0x00000000001FFFFF  // Bits 20-0
 #define OFFSET_1G_MASK  0x000000003FFFFFFF  // Bits 29-0
 
+#define CLEAN_PHYADDR(x)    ((x) & PHYS_PAGE_MASK)
+
 #endif // !_MEMDEFS_H_
