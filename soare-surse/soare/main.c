@@ -72,7 +72,7 @@ void EntryPoint(
         MmGetTotalFreeMemory(), ByteToMb(MmGetTotalFreeMemory()), totalMemory, ByteToMb(totalMemory));
 
     status = MmVirtualManagerInit(totalMemory, 
-        gKernelGlobalData.VirtualBase, gKernelGlobalData.PhysicalBase, 
+        gKernelGlobalData.PhysicalBase, gKernelGlobalData.VirtualBase,
         gKernelGlobalData.KernelSize + pmmgEnd - pmmgrStart);
     if (!NT_SUCCESS(status))
     {
