@@ -4,8 +4,25 @@
 #include "mem.h"
 #include "log.h"
 #include "physmemmgr.h"
+#include "debugger.h"
 
-#define PTE_COUNT   512
+#define PTE_COUNT               512
+#define PTE_RECURSIVE_INDEX     511ULL
+#define PML4_INDEX(x)           (((x) >> PML4_IDX_SHIFT) & 0x1FF)
+#define PDP_INDEX(x)            (((x) >> PDP_IDX_SHIFT) & 0x1FF)
+#define PD_INDEX(x)             (((x) >> PD_IDX_SHIFT) & 0x1FF)
+#define PT_INDEX(x)             (((x) >> PT_IDX_SHIFT) & 0x1FF)
+
+#define VAS_VMGR_PT             (0xFFFF000000000000ULL  + (PTE_RECURSIVE_INDEX << 39))
+#define VAS_VMGR_PD             (VAS_VMGR_PT            + (PTE_RECURSIVE_INDEX << 30))
+#define VAS_VMGR_PDP            (VAS_VMGR_PD            + (PTE_RECURSIVE_INDEX << 21))
+#define VAS_VMGR_PML4           (VAS_VMGR_PDP           + (PTE_RECURSIVE_INDEX << 12))
+
+#define VA2PML4(vaddr)           (VAS_VMGR_PML4)
+#define VA2PDP(vaddr)            (VAS_VMGR_PDP + (((vaddr) >> 27) & 0x00001FF000))
+#define VA2PD(vaddr)             (VAS_VMGR_PD + (((vaddr) >> 18) & 0x003FFFF000))
+#define VA2PT(vaddr)             (VAS_VMGR_PT + (((vaddr) >> 9) & 0x7FFFFFF000))
+
 
 typedef QWORD       PTE, *PPTE;
 
@@ -23,159 +40,6 @@ typedef struct _PT
 
 static_assert(sizeof(PT) == PAGE_SIZE_4K, "PT size not 4K!");
 
-#define VA_SPACE_VIRTMMGR       (ONE_TB * 2)
-
-
-
-static QWORD gPhase1TableRangeStart;
-static QWORD gPhase1TableRangeNextTable;
-static QWORD gPhase1TableRangeEnd;
-static QWORD gTableRangeDelta;
-
-
-static
-BOOLEAN
-_MmPhase1CreateTableLayout(
-    _In_ QWORD Pml4eCount,
-    _In_ QWORD PdpeCount,
-    _In_ QWORD PdeCount
-)
-{
-#define MAX_TRY_COUNT   512
-    QWORD pages = 1 + Pml4eCount + PdpeCount + PdeCount;
-    QWORD startRange = 32 * ONE_MB;
-    WORD tryCount = 0;
-    
-    while (tryCount < MAX_TRY_COUNT)
-    {
-        NTSTATUS status = MmReservePhysicalRange(startRange, pages * PAGE_SIZE_4K);
-        if (NT_SUCCESS(status))
-        {
-            gPhase1TableRangeStart = startRange;
-            gPhase1TableRangeNextTable = startRange;
-            gPhase1TableRangeEnd = gPhase1TableRangeNextTable + pages * PAGE_SIZE_4K;
-            return TRUE;
-        }
-
-        startRange += PAGE_SIZE_4K;
-        tryCount++;
-    }
-
-    return FALSE;
-}
-
-
-static
-BOOLEAN
-_MmPhase1AllocTable(
-    _Out_ PPT *Pt
-)
-{
-    if (gPhase1TableRangeNextTable >= gPhase1TableRangeEnd)
-    {
-        return FALSE;
-    }
-
-    *Pt = (PT *)gPhase1TableRangeNextTable;
-    memset(gPhase1TableRangeNextTable, 0, sizeof(PT));
-    gPhase1TableRangeNextTable += sizeof(PT);
-
-    return TRUE;
-}
-
-
-static
-BOOLEAN
-_MmPhase1GetTableForIndex(
-    _In_ PPT CurrentTable,
-    _In_ WORD Index,
-    _Out_ PPT *NextTable
-)
-{
-    PTE pte = CurrentTable->Entries[Index];
-    PPT pPt = NULL;
-
-    if (pte & PTE_P)
-    {
-        *NextTable = (PT *)CLEAN_PHYADDR(pte);
-        return TRUE;
-    }
-
-    if (_MmPhase1AllocTable(&pPt))
-    {
-        CurrentTable->Entries[Index] = CLEAN_PHYADDR((QWORD)pPt) | PTE_P | PTE_RW | PTE_US;
-        *NextTable = pPt;
-        return TRUE;
-    }
-
-    return FALSE;
-}
-
-
-static
-BOOLEAN
-_MmPhase1MapPaToVa(
-    _In_ PPT Pml4,
-    _In_ QWORD Va,
-    _In_ QWORD Pa
-)
-{
-    WORD pml4i = 0;
-    WORD pdpi = 0;
-    WORD pdi = 0;
-    WORD pti = 0;
-    PPT pPdp = NULL;
-    PPT pPd = NULL;
-    PPT pPt = NULL;
-
-    MmGetIndexesForVa((PVOID)Va, &pml4i, &pdpi, &pdi, &pti);
-
-    if (!_MmPhase1GetTableForIndex(Pml4, pml4i, &pPdp))
-    {
-        return FALSE;
-    }
-
-    if (!_MmPhase1GetTableForIndex(pPdp, pdpi, &pPd))
-    {
-        return FALSE;
-    }
-
-    if (!_MmPhase1GetTableForIndex(pPd, pdi, &pPt))
-    {
-        return FALSE;
-    }
-
-    if (pPt->Entries[pti] & PTE_P)
-    {
-        return FALSE;
-    }
-
-    pPt->Entries[pti] = CLEAN_PHYADDR(Pa) | PTE_P | PTE_RW | PTE_US;
-
-    return TRUE;
-}
-
-
-static
-BOOLEAN
-_MmPhase1MapPaRangeToVaRange(
-    _In_ PPT Pml4,
-    _In_ QWORD VaRangeStart,
-    _In_ QWORD PaRangeStart,
-    _In_ QWORD Length
-)
-{
-    for (QWORD page = 0; page < Length; page += PAGE_SIZE_4K)
-    {
-        if (!_MmPhase1MapPaToVa(Pml4, VaRangeStart + page, PaRangeStart + page))
-        {
-            return FALSE;
-        }
-    }
-
-    return TRUE;
-}
-
 
 NTSTATUS
 MmVirtualManagerInit(
@@ -191,6 +55,12 @@ MmVirtualManagerInit(
     QWORD pml4eCount;
     QWORD pagesNeeded;
     PPT pPml4;
+    QWORD pdbr;
+    NTSTATUS status;
+
+    UNREFERENCED_PARAMETER(KernelPaStart);
+    UNREFERENCED_PARAMETER(KernelVaStart);
+    UNREFERENCED_PARAMETER(KernelRegionLength);
 
     pteCount = SMALL_PAGE_COUNT(MaximumMemorySize); // how many pages we have
     pdeCount = PAGES_TO_PTES(pteCount);             // how many PTs we need
@@ -211,39 +81,21 @@ MmVirtualManagerInit(
         pml4eCount, pdpeCount, pdeCount, pteCount);
     Log("\t%d pages (%d MB)\n", pagesNeeded, ByteToMb(pagesNeeded * PAGE_SIZE_4K));
 
-    if (!_MmPhase1CreateTableLayout(pml4eCount, pdpeCount, pdeCount))
+    pdbr = 0;
+    status = MmAllocPhysicalPage(&pdbr);
+    if (!NT_SUCCESS(status))
     {
-        LogWithInfo("[ERROR] _MmPhase1CreateTableLayout failed\n");
-        return STATUS_INSUFFICIENT_RESOURCES;
+        LogWithInfo("[ERROR] MmAllocPhysicalPage failed: 0x%08x\n", status);
+        return status;
     }
 
-    if (!_MmPhase1AllocTable(&pPml4))
-    {
-        LogWithInfo("[ERROR] _MmPhase1AllocTable failed\n");
-        return STATUS_INSUFFICIENT_RESOURCES;
-    }
+    pPml4 = (PT *)pdbr;
+    Log("[VIRTMEM] PDBR @ %018p (PA)\n", pdbr);
+    memset(pPml4->Entries, 0, sizeof(pPml4->Entries));
 
-    Log("[VIRTMEM] Final PDBR @ %018p\n", pPml4);
-
-    if (!_MmPhase1MapPaRangeToVaRange(pPml4, VA_SPACE_VIRTMMGR, gPhase1TableRangeStart, gPhase1TableRangeEnd - gPhase1TableRangeStart))
-    {
-        LogWithInfo("[ERROR] _MmPhase1MapPaRangeToVaRange failed");
-        return STATUS_INSUFFICIENT_RESOURCES;
-    }
-
-    Log("[VIRTMEM] Mapped [%018p %018p) VA -> [%018p, %018p) PA\n",
-        VA_SPACE_VIRTMMGR, VA_SPACE_VIRTMMGR + gPhase1TableRangeEnd - gPhase1TableRangeStart,
-        gPhase1TableRangeEnd, gPhase1TableRangeEnd + gPhase1TableRangeEnd - gPhase1TableRangeStart);
-
-    if (!_MmPhase1MapPaRangeToVaRange(pPml4, KernelVaStart, KernelPaStart, KernelRegionLength))
-    {
-        LogWithInfo("[ERROR] _MmPhase1MapPaRangeToVaRange failed");
-        return STATUS_INSUFFICIENT_RESOURCES;
-    }
-
-    Log("[VIRTMEM] Mapped [%018p %018p) VA -> [%018p, %018p) PA\n",
-        KernelVaStart, KernelVaStart + KernelRegionLength,
-        KernelPaStart, KernelPaStart + KernelRegionLength);
+    // install the recursive entry
+    pPml4->Entries[PTE_RECURSIVE_INDEX] = CLEAN_PHYADDR(pdbr) | PML4E_P | PML4E_RW | PML4E_US;
+    Log("%018p\n", (QWORD)&MaximumMemorySize - (QWORD)&status);
 
     return STATUS_SUCCESS;
 }
