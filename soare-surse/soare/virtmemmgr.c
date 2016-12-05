@@ -300,7 +300,13 @@ MmVirtualManagerInit(
     if (!NT_SUCCESS(status))
     {
         LogWithInfo("[ERROR] _MmPhase1MapContigousRegion failed: 0x%08x\n", status);
+        return status;
     }
+
+    // switch to the final PDBR
+    Log("[VIRTMEM] Switching PDBR from %018p to %018p...\n", __readcr3(), pdbr);
+    __writecr3(pdbr);
+    Log("[VIRTMEM] PDBR switched to: %018p\n", __readcr3());
 
     return STATUS_SUCCESS;
 }
