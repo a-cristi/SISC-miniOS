@@ -24,6 +24,8 @@ void EntryPoint(
     QWORD totalMemory;
     QWORD pmmgrStart;
     QWORD pmmgEnd;
+#define GUARD_VALUE 'grd0'
+    DWORD guard = GUARD_VALUE;
 
     VgaInit(VGA_MEMORY_BUFFER, vgaColorWhite, vgaColorBlack);
     Log("Built on %s %s\n", __DATE__, __TIME__);
@@ -71,6 +73,8 @@ void EntryPoint(
     Log("%018p bytes (%d MB) of physical memory are available out of %018p bytes (%d MB)\n", 
         MmGetTotalFreeMemory(), ByteToMb(MmGetTotalFreeMemory()), totalMemory, ByteToMb(totalMemory));
 
+    Log("Guard @ %018p = 0x%08x\n", &guard, guard);
+
     status = MmVirtualManagerInit(totalMemory, 
         gKernelGlobalData.PhysicalBase, gKernelGlobalData.VirtualBase,
         gKernelGlobalData.KernelSize + pmmgEnd - pmmgrStart);
@@ -78,6 +82,13 @@ void EntryPoint(
     {
         Log("[FATAL ERROR] MmVirtualManagerInit: 0x%08x\n", status);
         PANIC("Failed to initialize the virtual memory manager");
+    }
+
+    Log("Guard @ %018p = 0x%08x\n", &guard, guard);
+    if (guard != GUARD_VALUE)
+    {
+        LogWithInfo("[FATAL ERROR] Stack guard value was corrupted!\n");
+        PANIC("Stack guard value was corrupted!");
     }
 
     Log("> Initializing PIC... ");

@@ -25,6 +25,7 @@
 
 #define VAS_KERNEL              (ONE_TB)
 #define VAS_LOWMEM              (0ULL)
+#define VAS_STACK               (ONE_TB * 2)
 
 typedef QWORD       PTE, *PPTE;
 
@@ -41,6 +42,25 @@ typedef struct _PT
 #define PAGES_TO_PTES(pages)    (ROUND_UP((pages), PTE_COUNT) / PTE_COUNT)
 
 static_assert(sizeof(PT) == PAGE_SIZE_4K, "PT size not 4K!");
+
+typedef enum _TABLE_LEVEL
+{
+    levelPt = 1,
+    levelPd,
+    levelPdp,
+    levelPml4
+} TABLE_LEVEL;
+
+
+static QWORD gVirtStackBase;
+static QWORD gVirtStackTop;
+static QWORD gNextStackBase;
+
+
+QWORD
+MmStckMoveBspStackAndAdjustRsp(
+    __in QWORD NewStackTop
+);
 
 
 static 
@@ -132,6 +152,81 @@ _MmPhase1MapContigousRegion(
     }
 
     return STATUS_SUCCESS;
+}
+
+
+static
+BOOLEAN
+_MmIsVaRangeFree(
+    _In_ QWORD Start,
+    _In_ QWORD Length
+)
+{
+    QWORD va = ROUND_DOWN(Start, PAGE_SIZE_4K);
+    QWORD vaEnd = va + ROUND_UP(Length, PAGE_SIZE_4K);
+
+    while (va < vaEnd)
+    {
+        PPT pTable = (PT *)VA2PML4(va);
+        PTE pte = pTable->Entries[PML4_INDEX(va)];
+
+        if (0 == (pte & PML4E_P))
+        {
+            // the 512G range described by this PML4E is free
+            va = ROUND_DOWN(va, PAGE_SIZE_1G * 512) + PAGE_SIZE_1G * 512;
+            continue;
+        }
+
+        pTable = (PT *)VA2PDP(va);
+        pte = pTable->Entries[PDP_INDEX(va)];
+
+        if (0 == (pte & PDPE_P))
+        {
+            // the entire 1G range described by this PML4E is free
+            va = ROUND_DOWN(va, PAGE_SIZE_1G) + PAGE_SIZE_1G;
+            continue;
+        }
+
+        if (0 != (pte & PDPE_PS))
+        {
+            // this is a 1G page
+            return FALSE;
+        }
+
+        pTable = (PT *)VA2PD(va);
+        pte = pTable->Entries[PD_INDEX(va)];
+
+        if (0 == (pte & PDE_P))
+        {
+            // the entire 2M range described by this PML4E is free
+            va = ROUND_DOWN(va, PAGE_SIZE_2M) + PAGE_SIZE_2M;
+            continue;
+        }
+
+        if (0 != (pte & PDE_PS))
+        {
+            // this is a 2M page
+            return FALSE;
+        }
+
+        pTable = (PT *)VA2PT(va);
+        pte = pTable->Entries[PT_INDEX(va)];
+
+        if (0 == (pte & PTE_P))
+        {
+            // free 4K page
+            va += PAGE_SIZE_4K;
+            continue;
+        }
+
+        if (0 != (pte & PDE_PS))
+        {
+            // this is a 4K page
+            return FALSE;
+        }
+    }
+
+    return TRUE;
 }
 
 
@@ -229,6 +324,171 @@ MmMapContigousPhysicalRegion(
 
 
 NTSTATUS
+MmMapVaToPa(
+    _In_ QWORD PhysicalFrame,
+    _In_ QWORD VirtualAddress,
+    _In_ BOOLEAN LargePage,
+    _In_ WORD Attributes
+)
+{
+    PPT pTable;
+    PTE pte;
+
+    if ((LargePage && (PhysicalFrame % PAGE_SIZE_2M)) || (PhysicalFrame % PAGE_SIZE_4K))
+    {
+        return STATUS_INVALID_PARAMETER_1;
+    }
+
+    if ((LargePage && (VirtualAddress % PAGE_SIZE_2M)) || (VirtualAddress % PAGE_SIZE_4K))
+    {
+        return STATUS_INVALID_PARAMETER_2;
+    }
+
+    pTable = (PT *)VA2PML4(VirtualAddress);             // PML4
+    pte = pTable->Entries[PML4_INDEX(VirtualAddress)];  // PML4E
+    if (0 == (pte & PML4E_P))
+    {
+        // the needed PDP is not present, create one
+        QWORD pa = 0;
+        NTSTATUS status = MmAllocPhysicalPage(&pa);
+        if (!NT_SUCCESS(status))
+        {
+            return status;
+        }
+
+        pTable->Entries[PML4_INDEX(VirtualAddress)] = CLEAN_PHYADDR(pa) | PML4E_P | PML4E_RW | PML4E_US;
+        pTable = (PT *)VA2PDP(VirtualAddress);
+        memset(pTable, 0, sizeof(PT));
+    }
+    else
+    {
+        // present, simply advance the table
+        pTable = (PT *)VA2PDP(VirtualAddress);
+    }
+
+    // pTable is now the required PDP
+    pte = pTable->Entries[PDP_INDEX(VirtualAddress)];   // PDPE
+    if (0 == (pte & PDPE_P))
+    {
+        // the needed PD is not present, create one
+        QWORD pa = 0;
+        NTSTATUS status = MmAllocPhysicalPage(&pa);
+        if (!NT_SUCCESS(status))
+        {
+            return status;
+        }
+
+        pTable->Entries[PDP_INDEX(VirtualAddress)] = CLEAN_PHYADDR(pa) | PDPE_P | PDPE_RW | PDPE_US;
+        pTable = (PT *)VA2PD(VirtualAddress);
+        memset(pTable, 0, sizeof(PT));
+    }
+    else
+    {
+        // present, simply advance the table
+        pTable = (PT *)VA2PD(VirtualAddress);
+    }
+
+    // pTable is now the required PD
+    pte = pTable->Entries[PD_INDEX(VirtualAddress)];    // PDE
+    if (LargePage)
+    {
+        // 2M page, add a PDE and return
+        if (0 == (pte & PDE_P))
+        {
+            pTable->Entries[PD_INDEX(VirtualAddress)] = CLEAN_PHYADDR(PhysicalFrame) | PDE_PS | Attributes;
+            return STATUS_SUCCESS;
+        }
+        else
+        {
+            return STATUS_PAGE_ALREADY_RESERVED;
+        }
+    }
+    else
+    {
+        // 4K page, get the PT
+        if (0 == (pte & PDE_P))
+        {
+            // the needed PT is not present, create one
+            QWORD pa = 0;
+            NTSTATUS status = MmAllocPhysicalPage(&pa);
+            if (!NT_SUCCESS(status))
+            {
+                return status;
+            }
+
+            pTable->Entries[PD_INDEX(VirtualAddress)] = CLEAN_PHYADDR(pa) | PDE_P | PDE_RW | PDE_US;
+            pTable = (PT *)VA2PT(VirtualAddress);
+            memset(pTable, 0, sizeof(PT));
+        }
+        else
+        {
+            // present, simply advance the table
+            pTable = (PT *)VA2PT(VirtualAddress);
+        }
+
+        pte = pTable->Entries[PT_INDEX(VirtualAddress)];
+        if (0 == (pte & PDE_P))
+        {
+            pTable->Entries[PT_INDEX(VirtualAddress)] = CLEAN_PHYADDR(PhysicalFrame) | Attributes;
+            return STATUS_SUCCESS;
+        }
+        else
+        {
+            return STATUS_PAGE_ALREADY_RESERVED;
+        }
+    }
+}
+
+
+NTSTATUS
+MmStackAlloc(
+    _In_ DWORD Size,
+    _Out_ QWORD *StackTop
+)
+{
+    DWORD pages = SMALL_PAGE_COUNT(Size);
+
+    if (Size % PAGE_SIZE_4K)
+    {
+        return STATUS_INVALID_PARAMETER_1;
+    }
+
+    if (!StackTop)
+    {
+        return STATUS_INVALID_PARAMETER_2;
+    }
+
+    if (gNextStackBase + Size >= gVirtStackTop)
+    {
+        return STATUS_NO_MEMORY;
+    }
+
+    for (DWORD i = 0; i < pages; i++)
+    {
+        QWORD pa = 0;
+        NTSTATUS status = MmAllocPhysicalPage(&pa);
+        if (!NT_SUCCESS(status))
+        {
+            return status;
+        }
+
+        status = MmMapVaToPa(pa, gNextStackBase, FALSE, PTE_P | PTE_US | PTE_RW);
+        if (!NT_SUCCESS(status))
+        {
+            LogWithInfo("[ERROR] MmMapVaToPa failed for %018p -> %018p: 0x%08x\n", pa, gNextStackBase, status);
+            return status;
+        }
+
+        gNextStackBase += PAGE_SIZE_4K;
+    }
+
+    *StackTop = gNextStackBase - PAGE_SIZE_4K;
+
+    return STATUS_SUCCESS;
+}
+
+
+NTSTATUS
 MmVirtualManagerInit(
     _In_ QWORD MaximumMemorySize,
     _In_ QWORD KernelPaStart,
@@ -244,6 +504,8 @@ MmVirtualManagerInit(
     PPT pPml4;
     QWORD pdbr;
     NTSTATUS status;
+    QWORD rsp;
+    QWORD magic;
 
     pteCount = SMALL_PAGE_COUNT(MaximumMemorySize); // how many pages we have
     pdeCount = PAGES_TO_PTES(pteCount);             // how many PTs we need
@@ -307,6 +569,78 @@ MmVirtualManagerInit(
     Log("[VIRTMEM] Switching PDBR from %018p to %018p...\n", __readcr3(), pdbr);
     __writecr3(pdbr);
     Log("[VIRTMEM] PDBR switched to: %018p\n", __readcr3());
+
+    // init the stack VAS
+    gVirtStackBase = VAS_STACK;
+    gVirtStackTop = VAS_STACK + ONE_TB;
+    gNextStackBase = gVirtStackBase;
+
+    rsp = 0;
+    status = MmStackAlloc(PAGE_SIZE_2M, &rsp);
+    Log("status: 0x%08x rsp: %018p\n", status, rsp);
+
+    magic = MmStckMoveBspStackAndAdjustRsp(rsp - sizeof(PVOID));
+    Log("Magic: %018p\n", magic);
+
+    return STATUS_SUCCESS;
+}
+
+
+NTSTATUS
+MmTranslateVa(
+    _In_ PVOID Va,
+    _Out_ QWORD *Pa,
+    _Out_ DWORD *PageSize
+)
+{
+    PPT pTable = (PT *)VA2PML4(Va);
+    PTE pte = pTable->Entries[PML4_INDEX((QWORD)Va)];
+
+    if (0 == (pte & PML4E_P))
+    {
+        return STATUS_UNSUCCESSFUL;
+    }
+
+    pTable = (PT *)VA2PDP((QWORD)Va);
+    pte = pTable->Entries[PDP_INDEX((QWORD)Va)];
+
+    if (0 == (pte & PDPE_P))
+    {
+        return STATUS_UNSUCCESSFUL;
+    }
+
+    if (0 != (pte & PDPE_PS))
+    {
+        *PageSize = PAGE_SIZE_1G;
+        *Pa = (pte & ~OFFSET_1G_MASK) | ((QWORD)Va & OFFSET_1G_MASK);
+        return STATUS_SUCCESS;
+    }
+
+    pTable = (PT *)VA2PD((QWORD)Va);
+    pte = pTable->Entries[PD_INDEX((QWORD)Va)];
+
+    if (0 == (pte & PDE_P))
+    {
+        return STATUS_UNSUCCESSFUL;
+    }
+
+    if (0 != (pte & PDE_PS))
+    {
+        *PageSize = PAGE_SIZE_2M;
+        *Pa = (pte & ~OFFSET_2M_MASK) | ((QWORD)Va & OFFSET_2M_MASK);
+        return STATUS_SUCCESS;
+    }
+
+    pTable = (PT *)VA2PT((QWORD)Va);
+    pte = pTable->Entries[PT_INDEX((QWORD)Va)];
+
+    if (0 == (pte & PTE_P))
+    {
+        return STATUS_UNSUCCESSFUL;
+    }
+
+    *PageSize = PAGE_SIZE_4K;
+    *Pa = (pte & ~OFFSET_4K_MASK) | ((QWORD)Va & OFFSET_4K_MASK);
 
     return STATUS_SUCCESS;
 }
