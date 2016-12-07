@@ -306,7 +306,7 @@ GLOBAL MmStckMoveBspStackAndAdjustRsp
 
 ; RCX - New stack top
 MmStckMoveBspStackAndAdjustRsp:
-    xchg    bx, bx
+    ; xchg    bx, bx
     mov     rax, '1111'                                 ; magic
     push    rax                                         ; push the magic
 
@@ -325,7 +325,6 @@ _do_copy_stck:
 
     mov     rsp, r8                                     ; new stack offset
 
-    pop     rax                                         ; pop the magic
-    mov     [0xb8000], rax                              ; show / check the magic
+    pop     rax                                         ; get the magic back from the stack
 
     retn
