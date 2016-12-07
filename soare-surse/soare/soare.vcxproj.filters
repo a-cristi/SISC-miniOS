@@ -92,6 +92,9 @@
     <ClCompile Include="virtmemmgr.c">
       <Filter>Source Files\memory</Filter>
     </ClCompile>
+    <ClCompile Include="kpool.c">
+      <Filter>Source Files\memory</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="boot.h">
@@ -155,6 +158,12 @@
       <Filter>Header Files\memory</Filter>
     </ClInclude>
     <ClInclude Include="virtmemmgr.h">
+      <Filter>Header Files\memory</Filter>
+    </ClInclude>
+    <ClInclude Include="winlists.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="kpool.h">
       <Filter>Header Files\memory</Filter>
     </ClInclude>
   </ItemGroup>
