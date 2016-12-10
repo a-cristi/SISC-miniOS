@@ -12,6 +12,7 @@
 #include "physmemmgr.h"
 #include "virtmemmgr.h"
 #include "panic.h"
+#include "dtr.h"
 #include "debugger.h"
 
 extern KGLOBAL gKernelGlobalData;
@@ -90,6 +91,19 @@ void EntryPoint(
         LogWithInfo("[FATAL ERROR] Stack guard value was corrupted!\n");
         PANIC("Stack guard value was corrupted!");
     }
+
+    gKernelGlobalData.Phase = 2;    // memory manager initialized, BSP stack switched
+
+    Log("> Setting exception handlers...");
+    status = ExInitExceptionHandling(NULL, NULL);
+    if (!NT_SUCCESS(status))
+    {
+        LogWithInfo("[FATAL ERROR] ExInitExceptionHandling failed: 0x%08x\n", status);
+        PANIC("Unable to initialize the exception mechanism!");
+    }
+    Log("Done!\n");
+    
+    DbgBreak();
 
     Log("> Initializing PIC... ");
     PicInitialize();
