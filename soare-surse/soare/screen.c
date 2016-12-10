@@ -28,7 +28,7 @@ _VgaScroll(
 )
 {
     // move everything up
-    for (WORD row = 0; row < gScreen.CurrentRow - 1; row++)
+    for (WORD row = 0; row < gScreen.CurrentRow; row++)
     {
         for (WORD column = 0; column < VGA_COLUMNS; column++)
         {
@@ -39,7 +39,8 @@ _VgaScroll(
     // and clear the last column using the current style
     for (WORD column = 0; column < VGA_COLUMNS; column++)
     {
-        gScreen.Buffer[VGA_MAKE_OFFSET(gScreen.CurrentRow, column)] = VGA_MAKE_ENTRY(' ', gScreen.CurrentColorStyle);
+        BYTE bg = gScreen.CurrentColorStyle >> 4;
+        gScreen.Buffer[VGA_MAKE_OFFSET(gScreen.CurrentRow, column)] = VGA_MAKE_ENTRY(' ', VGA_MAKE_STYLE(bg, bg));
     }
 }
 
@@ -58,7 +59,7 @@ _VgaSetCursorPosition(
         gScreen.CurrentColumn = 0;
     }
 
-    while (gScreen.CurrentRow >= VGA_LINES)
+    while (gScreen.CurrentRow >= VGA_LINES - 1)
     {
         _VgaScroll();
         gScreen.CurrentRow--;

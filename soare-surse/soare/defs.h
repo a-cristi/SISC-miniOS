@@ -84,14 +84,16 @@ typedef void                VOID, *PVOID;
 
 typedef BYTE                BOOLEAN, *PBOOLEAN;
 
+typedef INT32               NTSTATUS;
+
 //
 // frequently used definitions
 //
 #define UNREFERENCED_PARAMETER(P)           (P)
 #define UNREFERENCED_LOCAL_VARIABLE(V)      (V)
 
-#define ROUND_DOWN(val,align)     ((((val) % (align))==0)?(val):((val) - ((val) % (align))))
-#define ROUND_UP(val,align)       ((((val) % (align))==0)?(val):((val) + ((align) - ((val) % (align)))))
+#define ROUND_DOWN(val, align)     ((((val) % (align)) == 0) ? (val) : ((val) - ((val) % (align))))
+#define ROUND_UP(val, align)       ((((val) % (align)) == 0) ? (val) : ((val) + ((align) - ((val) % (align)))))
 
 #define MIN(x, y)           (((x) < (y)) ? (x) : (y))
 #define MAX(x, y)           (((x) > (y)) ? (x) : (y))

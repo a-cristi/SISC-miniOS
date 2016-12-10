@@ -94,9 +94,6 @@ MbDumpMemoryMap(
         base = ((QWORD)pMapEntry->base_addr_high << 32) | pMapEntry->base_addr_low;
         end = ((QWORD)pMapEntry->length_high << 32) | pMapEntry->length_low;
         end += base;
-
-        Log("Region [%018p, %018p) with type: %d\n", 
-            base, end, pMapEntry->type);
     
         parsedLength += pMapEntry->size + sizeof(pMapEntry->size);
         pMapEntry = (MEMORY_MAP *)((SIZE_T)MultibootInfo->mmap_addr + parsedLength);

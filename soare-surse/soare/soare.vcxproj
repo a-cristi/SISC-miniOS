@@ -148,7 +148,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>
       </AdditionalDependencies>
-      <BaseAddress>0x200000000</BaseAddress>
+      <BaseAddress>0x10000000000</BaseAddress>
       <EntryPointSymbol>EntryPoint</EntryPointSymbol>
       <SubSystem>Windows</SubSystem>
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
@@ -216,7 +216,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <AdditionalDependencies>
       </AdditionalDependencies>
-      <BaseAddress>0x200000000</BaseAddress>
+      <BaseAddress>0x10000000000</BaseAddress>
       <EntryPointSymbol>EntryPoint</EntryPointSymbol>
       <SubSystem>Windows</SubSystem>
       <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
@@ -231,29 +231,46 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="boot.h" />
+    <ClInclude Include="debugger.h" />
     <ClInclude Include="defs.h" />
+    <ClInclude Include="kernel.h" />
+    <ClInclude Include="kpool.h" />
     <ClInclude Include="limits.h" />
     <ClInclude Include="log.h" />
     <ClInclude Include="mbflg.h" />
     <ClInclude Include="mb_util.h" />
+    <ClInclude Include="mem.h" />
+    <ClInclude Include="memdefs.h" />
     <ClInclude Include="memmap.h" />
     <ClInclude Include="memory.h" />
     <ClInclude Include="multiboot.h" />
+    <ClInclude Include="ntstatus.h" />
+    <ClInclude Include="panic.h" />
+    <ClInclude Include="physmemmgr.h" />
     <ClInclude Include="pic.h" />
     <ClInclude Include="screen.h" />
     <ClInclude Include="string.h" />
     <ClInclude Include="varargs.h" />
+    <ClInclude Include="virtmemmgr.h" />
+    <ClInclude Include="winlists.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="debugger.c" />
+    <ClCompile Include="kernel.c" />
+    <ClCompile Include="kpool.c" />
     <ClCompile Include="log.c" />
     <ClCompile Include="main.c" />
+    <ClCompile Include="mem.c" />
     <ClCompile Include="memmap.c" />
     <ClCompile Include="memory.c" />
     <ClCompile Include="mb_util.c" />
+    <ClCompile Include="panic.c" />
+    <ClCompile Include="physmemmgr.c" />
     <ClCompile Include="pic.c" />
     <ClCompile Include="screen.c" />
     <ClCompile Include="snprintf.c" />
     <ClCompile Include="string.c" />
+    <ClCompile Include="virtmemmgr.c" />
   </ItemGroup>
   <ItemGroup>
     <YASM Include="__init.yasm">

@@ -19,6 +19,8 @@ typedef struct _MMAP_ENTRY
     MEM_TYPE    Type;
 } MMAP_ENTRY, *PMMAP_ENTRY;
 
+#define MAX_MMAP_ENTRIES    128
+
 VOID
 MmDumpMemoryMap(
     _In_ PMMAP_ENTRY Map,
@@ -29,6 +31,12 @@ VOID
 MmInitMemoryMapFromMultiboot(
     _In_ QWORD MapAddress,
     _In_ DWORD MapLength
+);
+
+NTSTATUS
+MmGetMapEntryForAddress(
+    _In_ QWORD PhysicalAddress,
+    _Out_ MMAP_ENTRY * Entry
 );
 
 #endif // !_MEM_MAP_H_
