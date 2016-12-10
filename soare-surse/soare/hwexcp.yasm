@@ -77,7 +77,6 @@ STRUC TRAP_FRAME
     ._FillCs        resw 3
 
     .Rsp            resq 1
-
     .SegSs          resw 1
     ._SsFill        resw 3
 ENDSTRUC
