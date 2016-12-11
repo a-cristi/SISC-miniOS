@@ -5,6 +5,29 @@
 #include "panic.h"
 #include "debugger.h"
 
+// CR2 format
+#pragma pack(push)
+#pragma pack(1)
+
+typedef union _PF_ERRCODE
+{
+    struct  
+    {
+        QWORD   P : 1;      // 0: non-present page; 1: page-level protection violation
+        QWORD   Wr : 1;     // 0: read access; 1: write access
+        QWORD   Us : 1;     // 0: supervisor-mode access; 1: user-mode access
+        QWORD   Rsvd : 1;   // 0: reserved bit violation; 1: reserved bit set to 1 in a paging structure entry
+        QWORD   Id : 1;     // 0: not an instruction fetch; 1: instruction fetch
+        QWORD   Pk : 1;     // 0: not a protection key violation; 1: protection key violation
+        QWORD   _Reserved : 9;
+        QWORD   Sgx : 1;    // 0: not related to SGX; 1: SGX-specific access-control requirements violation
+    } Fields;
+
+    QWORD       ErrorCode;
+} PF_ERRCODE;
+
+#pragma pack(pop)
+
 //
 // Exception codes
 //
@@ -83,6 +106,9 @@ typedef struct _TRAP_FRAME
     WORD        SegCs;
     WORD        _CsFill[3];
 
+    DWORD       Eflags;
+    DWORD       _EflagsFill;
+
     QWORD       RegRsp;
     WORD        SegSs;
     WORD        _SsFill[3];
@@ -91,7 +117,7 @@ typedef struct _TRAP_FRAME
 #pragma pack(pop)
 
 // Check the size
-static_assert(sizeof(TRAP_FRAME) == 0x0108, "Invalid TRAP_FRAME size");
+static_assert(sizeof(TRAP_FRAME) == 0x0110, "Invalid TRAP_FRAME size");
 
 // Check TRAP_FRAME.Self offset
 static_assert(((QWORD)&(((TRAP_FRAME *)0)->Self)) == 5 * sizeof(QWORD), "TRAP_FRAME.Self at wrong offset");
@@ -163,13 +189,11 @@ _ExDumpExceptionInformation(
     QWORD cr2 = __readcr2();
     QWORD cr3 = __readcr3();
     QWORD cr4 = __readcr4();
-    QWORD rflags = __readeflags();
 
     Log("\n!!======================================================================!!\n");
-    Log("Exception: %d %s Trap frame @ %018p / %018p Error code: 0x%016llx\n", 
-        Code, _ExCodeToString(Code), TrapFrame, TrapFrame->Self, TrapFrame->ErrorCode);
+    Log("Exception: %d %s Trap frame @ %018p Error code: 0x%016llx\n", 
+        Code, _ExCodeToString(Code), TrapFrame, TrapFrame->ErrorCode);
     Log("CR0 = 0x%016llx CR2 = 0x%016llx CR3 = 0x%016llx CR4 = 0x%016llx\n", cr0, cr2, cr3, cr4);
-    Log("RFLAGS = 0x%016llx\n", rflags);
     Log("RAX: 0x%016llx RCX: 0x%016llx\n", TrapFrame->RegRax, TrapFrame->RegRcx);
     Log("RDX: 0x%016llx RBX: 0x%016llx\n", TrapFrame->RegRdx, TrapFrame->RegRbx);
     Log("RSP: 0x%016llx RBP: 0x%016llx\n", TrapFrame->RegRsp, TrapFrame->RegRbp);
@@ -179,19 +203,43 @@ _ExDumpExceptionInformation(
     Log("R12: 0x%016llx R13: 0x%016llx\n", TrapFrame->RegR12, TrapFrame->RegR13);
     Log("R14: 0x%016llx R15: 0x%016llx\n", TrapFrame->RegR14, TrapFrame->RegR15);
     Log("RIP: 0x%016llx\n", TrapFrame->RegRip);
+    Log("EFLAGS = 0x%08x\n", TrapFrame->Eflags);
     Log("CS: 0x%04x DS: 0x%04x ES: 0x%04x FS: 0x%04x GS: 0x%04x SS: 0x%04x\n",
         TrapFrame->SegCs, TrapFrame->SegDs, TrapFrame->SegEs, TrapFrame->SegFs, TrapFrame->SegGs, TrapFrame->SegSs);
 
     if (EX_CODE_INVALID_OPCODE == Code)
     {
         // try to read 16 bytes from RIP
-        Log("Code snippet at RIP:\n");
-        PBYTE pCode = (BYTE *)TrapFrame->RegRip;
-        for (BYTE i = 0; i < 16; i++)
+        if (TrapFrame->RegRip)
         {
-            Log("0x%02x ", pCode[i]);
+            PBYTE pCode = (BYTE *)TrapFrame->RegRip;
+            Log("Code snippet at RIP:\n");
+            for (BYTE i = 0; i < 16; i++)
+            {
+                Log("0x%02x ", pCode[i]);
+            }
+            Log("\n");
         }
-        Log("\n");
+    }
+    else if (EX_CODE_PAGE_FAULT == Code)
+    {
+        PF_ERRCODE pfErr;
+        PBYTE pCode = (BYTE *)TrapFrame->RegRip;
+        pfErr.ErrorCode = cr2;
+        Log("Present: %d Write: %d User-mode: %d Reserved bit violation: %d Instruction fetch: %d PK: %d SGX: %d\n",
+            pfErr.Fields.P, pfErr.Fields.Wr, pfErr.Fields.Us, pfErr.Fields.Rsvd, 
+            pfErr.Fields.Id, pfErr.Fields.Pk, pfErr.Fields.Sgx);
+
+        if (pCode)
+        {
+            // try to read 16 bytes from RIP
+            Log("Code snippet at RIP:\n");
+            for (BYTE i = 0; i < 16; i++)
+            {
+                Log("0x%02x ", pCode[i]);
+            }
+            Log("\n");
+        }
     }
 }
 

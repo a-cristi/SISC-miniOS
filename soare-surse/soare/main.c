@@ -110,7 +110,6 @@ void EntryPoint(
         LogWithInfo("[ERROR] DtrInitAndLoadAll failed: 0x%08x\n", status);
         PANIC("Failed to initialize the BSP!");
     }
-    DbgBreak();
 
     Log("> Initializing PIC... ");
     PicInitialize();

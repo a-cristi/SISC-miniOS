@@ -76,6 +76,9 @@ STRUC TRAP_FRAME
     .SegCs          resw 1
     ._FillCs        resw 3
 
+    .Eflags         resd 1
+    ._EflagsFill    resd 1
+
     .Rsp            resq 1
     .SegSs          resw 1
     ._SsFill        resw 3
@@ -119,6 +122,8 @@ ENDSTRUC
     
     mov     ax, gs
     mov     [rbp + TRAP_FRAME.SegGs], ax
+
+    mov     [rbp + TRAP_FRAME.Self], rbp
 %endmacro
 
 %macro EXIT_EXCEPTION_HANDLER 0
@@ -377,7 +382,7 @@ ExHndReserved15:
     GENERATE_TRAP_FRAME "yes"
 
     xor     rcx, rcx
-    mov     ecx, 0xFFFFFFFFFFFFFFFF     ;; this should not happen (I think)
+    mov     ecx, 0xFFFF     ;; this should not happen
     mov     QWORD [rbp + TRAP_FRAME.ExceptionCode], rcx
 
     mov     rdx, rbp
