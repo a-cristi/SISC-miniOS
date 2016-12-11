@@ -165,7 +165,7 @@ _ExDumpExceptionInformation(
     QWORD cr4 = __readcr4();
     QWORD rflags = __readeflags();
 
-    Log("!!======================================================================!!");
+    Log("\n!!======================================================================!!\n");
     Log("Exception: %d %s Trap frame @ %018p / %018p Error code: 0x%016llx\n", 
         Code, _ExCodeToString(Code), TrapFrame, TrapFrame->Self, TrapFrame->ErrorCode);
     Log("CR0 = 0x%016llx CR2 = 0x%016llx CR3 = 0x%016llx CR4 = 0x%016llx\n", cr0, cr2, cr3, cr4);
@@ -181,6 +181,18 @@ _ExDumpExceptionInformation(
     Log("RIP: 0x%016llx\n", TrapFrame->RegRip);
     Log("CS: 0x%04x DS: 0x%04x ES: 0x%04x FS: 0x%04x GS: 0x%04x SS: 0x%04x\n",
         TrapFrame->SegCs, TrapFrame->SegDs, TrapFrame->SegEs, TrapFrame->SegFs, TrapFrame->SegGs, TrapFrame->SegSs);
+
+    if (EX_CODE_INVALID_OPCODE == Code)
+    {
+        // try to read 16 bytes from RIP
+        Log("Code snippet at RIP:\n");
+        PBYTE pCode = (BYTE *)TrapFrame->RegRip;
+        for (BYTE i = 0; i < 16; i++)
+        {
+            Log("0x%02x ", pCode[i]);
+        }
+        Log("\n");
+    }
 }
 
 //
@@ -257,38 +269,23 @@ _ExFillIdt(
 
     for (BYTE i = 0; i < sizeof(handlers) / sizeof(handlers[0]); i++)
     {
-        _ExSetInterruptHandler(Idt, i, (PVOID)handlers[i], GDT_CODEK_SELECTOR, 0x8E00);
+        _ExSetInterruptHandler(Idt, i, (PVOID)handlers[i], GDT_KCODE64_SELECTOR, 0x8E00);
     }
 }
 
 
-static INTERRUPT_GATE gIdt[IDT_ENTRIES];
-static IDTR gIdtr;
-
 NTSTATUS
 ExInitExceptionHandling(
-    _Inout_ INTERRUPT_GATE *Idt,
-    _Inout_ IDTR *Idtr
+    _Inout_ INTERRUPT_GATE *Idt
 )
 {
     if (!Idt)
     {
-        Idt = gIdt;
-        //return STATUS_INVALID_PARAMETER_1;
-    }
-
-    if (!Idtr)
-    {
-        Idtr = &gIdtr;
+        return STATUS_INVALID_PARAMETER_1;
     }
 
     // add the exception handlers to the IDT
     _ExFillIdt(Idt);
-
-    // load the IDT
-    Idtr->Address = (QWORD)Idt;
-    Idtr->Size = (IDT_ENTRIES * sizeof(INTERRUPT_GATE)) - 1;
-    __lidt(Idtr);
 
     return STATUS_SUCCESS;
 }

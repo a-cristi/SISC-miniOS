@@ -442,3 +442,103 @@ ExHndSIMDError:
     add     rsp, 4 * 8
 
     EXIT_EXCEPTION_HANDLER
+
+
+;;
+;; Helper functions
+;;
+
+global HwLoadTr
+global HwStoreTr
+global HwLoadCs
+global HwStoreCs
+global HwLoadDs
+global HwStoreDs
+global HwLoadEs
+global HwStoreEs
+global HwLoadFs
+global HwStoreFs
+global HwLoadGs
+global HwStoreGs
+global HwLoadSs
+global HwStoreSs
+
+;; CX = TSS Selector
+HwLoadTr:
+    ltr     cx
+    ret
+
+;; AX = TSS Selector
+HwStoreTr:
+    str     ax
+    ret
+
+;; CX = CS Selector
+HwLoadCs:
+    xor     rax, rax
+    mov     ax, cx
+    push    rax
+    call    $ + 5
+    add     qword [rsp], 7
+    retf
+
+;; AX = CS Selector
+HwStoreCs:
+    xor     rax, rax
+    mov     ax, cs
+    ret
+
+;; CX = DS Selector
+HwLoadDs:
+    mov     ds, cx
+    ret
+
+;; AX = DS Selector
+HwStoreDs:
+    xor     rax, rax
+    mov     ax, ds
+    ret
+
+;; CX = ES Selector
+HwLoadEs:
+    mov     es, cx
+    ret
+
+;; AX = ES Selector
+HwStoreEs:
+    xor     rax, rax
+    mov     ax, es
+    ret
+
+;; CX = FS Selector
+HwLoadFs:
+    mov     fs, cx
+    ret
+
+;; AX = FS Selector
+HwStoreFs:
+    xor     rax, rax
+    mov     ax, fs
+    ret
+
+;; CX = GS Selector
+HwLoadGs:
+    mov     gs, cx
+    ret
+
+;; AX = GS Selector
+HwStoreGs:
+    xor     rax, rax
+    mov     ax, gs
+    ret
+
+;; CX = SS Selector
+HwLoadSs:
+    mov     ss, cx
+    ret
+
+;; AX = SS Selector
+HwStoreSs:
+    xor     rax, rax
+    mov     ax, ss
+    ret

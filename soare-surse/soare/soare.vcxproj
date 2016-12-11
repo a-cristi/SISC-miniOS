@@ -265,6 +265,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="debugger.c" />
+    <ClCompile Include="dtr.c" />
     <ClCompile Include="excp.c" />
     <ClCompile Include="kernel.c" />
     <ClCompile Include="kpool.c" />
