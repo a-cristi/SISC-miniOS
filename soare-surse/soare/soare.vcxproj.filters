@@ -95,6 +95,12 @@
     <ClCompile Include="kpool.c">
       <Filter>Source Files\memory</Filter>
     </ClCompile>
+    <ClCompile Include="excp.c">
+      <Filter>Source Files\kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="dtr.c">
+      <Filter>Source Files\kernel</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="boot.h">
@@ -166,6 +172,9 @@
     <ClInclude Include="kpool.h">
       <Filter>Header Files\memory</Filter>
     </ClInclude>
+    <ClInclude Include="dtr.h">
+      <Filter>Header Files\kernel</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="postbuild.cmd">
@@ -174,5 +183,8 @@
   </ItemGroup>
   <ItemGroup>
     <YASM Include="__init.yasm" />
+    <YASM Include="hwexcp.yasm">
+      <Filter>Source Files\kernel</Filter>
+    </YASM>
   </ItemGroup>
 </Project>

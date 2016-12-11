@@ -12,6 +12,7 @@
 #include "physmemmgr.h"
 #include "virtmemmgr.h"
 #include "panic.h"
+#include "dtr.h"
 #include "debugger.h"
 
 extern KGLOBAL gKernelGlobalData;
@@ -26,6 +27,7 @@ void EntryPoint(
     QWORD pmmgEnd;
 #define GUARD_VALUE 'grd0'
     DWORD guard = GUARD_VALUE;
+    PPCPU pBsp = NULL;
 
     VgaInit(VGA_MEMORY_BUFFER, vgaColorWhite, vgaColorBlack);
     Log("Built on %s %s\n", __DATE__, __TIME__);
@@ -89,6 +91,24 @@ void EntryPoint(
     {
         LogWithInfo("[FATAL ERROR] Stack guard value was corrupted!\n");
         PANIC("Stack guard value was corrupted!");
+    }
+
+    gKernelGlobalData.Phase = 2;    // memory manager initialized, BSP stack switched
+    status = DtrCreatePcpu(&pBsp);
+    if (!NT_SUCCESS(status))
+    {
+        LogWithInfo("[FATAL ERROR] DtrCreatePcpu failed: 0x%08x\n", status);
+        PANIC("Failed to create the BSP structure!");
+    }
+    Log("BSP CPU page @ %018p\n", pBsp);
+    pBsp->IsBsp = TRUE;
+    pBsp->Number = 0;
+    pBsp->Self = pBsp;
+    status = DtrInitAndLoadAll(pBsp);
+    if (!NT_SUCCESS(status))
+    {
+        LogWithInfo("[ERROR] DtrInitAndLoadAll failed: 0x%08x\n", status);
+        PANIC("Failed to initialize the BSP!");
     }
 
     Log("> Initializing PIC... ");

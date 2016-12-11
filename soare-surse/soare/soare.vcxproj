@@ -109,6 +109,7 @@
       <MinimalRebuild>false</MinimalRebuild>
       <PreprocessorDefinitions>DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <IntrinsicFunctions>true</IntrinsicFunctions>
+      <DisableSpecificWarnings>4214;%(DisableSpecificWarnings)</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -123,6 +124,7 @@
       <SectionAlignment>1024</SectionAlignment>
       <Driver>Driver</Driver>
       <LargeAddressAware>true</LargeAddressAware>
+      <MergeSections>.boot=.text</MergeSections>
     </Link>
     <PostBuildEvent>
       <Command>"$(ProjectDir)postbuild.cmd" "$(SolutionDir)" "$(TargetPath)"</Command>
@@ -143,6 +145,7 @@
       <ShowIncludes>false</ShowIncludes>
       <PreprocessorDefinitions>DEBUG;AMD64;X64;_X64_;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <IntrinsicFunctions>true</IntrinsicFunctions>
+      <DisableSpecificWarnings>4214;%(DisableSpecificWarnings)</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -157,6 +160,7 @@
       <SectionAlignment>1024</SectionAlignment>
       <Driver>Driver</Driver>
       <LargeAddressAware>true</LargeAddressAware>
+      <MergeSections>.boot=.text</MergeSections>
     </Link>
     <PostBuildEvent>
       <Command>"$(ProjectDir)postbuild.cmd" "$(SolutionDir)" "$(TargetPath)"</Command>
@@ -175,6 +179,7 @@
       <AdditionalIncludeDirectories>c:\Program Files (x86)\Windows Kits\8.1\include</AdditionalIncludeDirectories>
       <EnableEnhancedInstructionSet>StreamingSIMDExtensions2</EnableEnhancedInstructionSet>
       <PreprocessorDefinitions>RELEASE;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DisableSpecificWarnings>4214;%(DisableSpecificWarnings)</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -191,6 +196,7 @@
       <SectionAlignment>1024</SectionAlignment>
       <Driver>Driver</Driver>
       <LargeAddressAware>true</LargeAddressAware>
+      <MergeSections>.boot=.text</MergeSections>
     </Link>
     <PostBuildEvent>
       <Command>"$(ProjectDir)postbuild.cmd" "$(SolutionDir)" "$(TargetPath)"</Command>
@@ -209,6 +215,7 @@
       <AdditionalIncludeDirectories>c:\Program Files (x86)\Windows Kits\8.1\include</AdditionalIncludeDirectories>
       <ShowIncludes>false</ShowIncludes>
       <PreprocessorDefinitions>RELEASE;NDEBUG;AMD64;X64;_X64_;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DisableSpecificWarnings>4214;%(DisableSpecificWarnings)</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -224,6 +231,7 @@
       <MapExports>true</MapExports>
       <SectionAlignment>1024</SectionAlignment>
       <Driver>Driver</Driver>
+      <MergeSections>.boot=.text</MergeSections>
     </Link>
     <PostBuildEvent>
       <Command>"$(ProjectDir)postbuild.cmd" "$(SolutionDir)" "$(TargetPath)"</Command>
@@ -233,6 +241,7 @@
     <ClInclude Include="boot.h" />
     <ClInclude Include="debugger.h" />
     <ClInclude Include="defs.h" />
+    <ClInclude Include="dtr.h" />
     <ClInclude Include="kernel.h" />
     <ClInclude Include="kpool.h" />
     <ClInclude Include="limits.h" />
@@ -256,6 +265,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="debugger.c" />
+    <ClCompile Include="dtr.c" />
+    <ClCompile Include="excp.c" />
     <ClCompile Include="kernel.c" />
     <ClCompile Include="kpool.c" />
     <ClCompile Include="log.c" />
@@ -273,6 +284,7 @@
     <ClCompile Include="virtmemmgr.c" />
   </ItemGroup>
   <ItemGroup>
+    <YASM Include="hwexcp.yasm" />
     <YASM Include="__init.yasm">
       <FileType>Document</FileType>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Assemblying %(Filename)%(Extension) ...</Message>

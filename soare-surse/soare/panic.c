@@ -12,9 +12,9 @@ DbgPanicWithInfo(
     _In_ PCHAR Reason
 )
 {
-    VgaClearScreenToColor(vgaColorBlue, vgaColorBlue);
-    VgaSetForeground(vgaColorRed);
-    VgaSetBackground(vgaColorBlue);
+    //VgaClearScreenToColor(vgaColorBlue, vgaColorBlue);
+    //VgaSetForeground(vgaColorRed);
+    //VgaSetBackground(vgaColorBlue);
 
     Log("FATAL ERROR: %s\n", Reason ? Reason : "UNKNOWN");
 
