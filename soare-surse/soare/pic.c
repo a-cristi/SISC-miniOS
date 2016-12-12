@@ -109,3 +109,13 @@ PicDisableIrq(
 
     _PicSetImr(gImrMaster, gImrSlave);
 }
+
+
+VOID
+PicSendCommand(
+    _In_ BYTE Cmd,
+    _In_ BOOLEAN SlavePic
+)
+{
+    _PicOutByte(SlavePic ? PIC2_CMD_PORT : PIC1_CMD_PORT, Cmd);
+}

@@ -13,6 +13,7 @@
 #include "virtmemmgr.h"
 #include "panic.h"
 #include "dtr.h"
+#include "timer.h"
 #include "debugger.h"
 
 extern KGLOBAL gKernelGlobalData;
@@ -111,10 +112,23 @@ void EntryPoint(
         PANIC("Failed to initialize the BSP!");
     }
 
-    Log("> Initializing PIC... ");
+    Log("> Initializing PIC...");
     PicInitialize();
     Log("Done!\n");
 
+    Log("> Initializing the timer...");
+    status = TmrInitializeTimer();
+    if (!NT_SUCCESS(status))
+    {
+        LogWithInfo("\n[ERROR] TmrInitializeTimer failed: 0x%08x\n", status);
+        PANIC("Failed to initilize the system timer!");
+    }
+    Log("Done!\n");
+    _enable();
+    while (TRUE)
+    {
+        Log(".");
+    }
     DbgBreak();
     __halt();
 }

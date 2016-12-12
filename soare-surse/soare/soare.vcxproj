@@ -239,6 +239,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="boot.h" />
+    <ClInclude Include="cpudefs.h" />
     <ClInclude Include="debugger.h" />
     <ClInclude Include="defs.h" />
     <ClInclude Include="dtr.h" />
@@ -259,6 +260,7 @@
     <ClInclude Include="pic.h" />
     <ClInclude Include="screen.h" />
     <ClInclude Include="string.h" />
+    <ClInclude Include="timer.h" />
     <ClInclude Include="varargs.h" />
     <ClInclude Include="virtmemmgr.h" />
     <ClInclude Include="winlists.h" />
@@ -281,6 +283,7 @@
     <ClCompile Include="screen.c" />
     <ClCompile Include="snprintf.c" />
     <ClCompile Include="string.c" />
+    <ClCompile Include="timer.c" />
     <ClCompile Include="virtmemmgr.c" />
   </ItemGroup>
   <ItemGroup>

@@ -111,6 +111,10 @@ DtrInitAndLoadAll(
     HwLoadSs(GDT_KDATA64_SELECTOR);
     Log("Done!\n");
 
+    // Set the PCPU
+    __writemsr(IA32_GS_BASE, Cpu);
+    __writemsr(IA32_KERNEL_GS_BASE, Cpu);
+
     return STATUS_SUCCESS;
 }
 
@@ -128,5 +132,38 @@ DtrCreatePcpu(
     }
 
     *Cpu = &gBsp;
+    return STATUS_SUCCESS;
+}
+
+
+NTSTATUS
+DtrInstallIrqHandler(
+    _In_ WORD Index,
+    _In_ PFN_IrqHandler Handler
+)
+{
+    QWORD qwHandler = (QWORD)Handler;
+    PPCPU pCpu = GetCurrentCpu();
+    PINTERRUPT_GATE pGate;
+
+    if (Index >= IDT_ENTRIES)
+    {
+        return STATUS_INVALID_PARAMETER_1;
+    }
+
+    if (!Handler)
+    {
+        return STATUS_INVALID_PARAMETER_4;
+    }
+
+    pGate = &pCpu->Idt[Index];
+    pGate->Offset_15_00 = qwHandler & 0xFFFF;
+    pGate->Offset_31_16 = (qwHandler >> 16) & 0xFFFF;
+    pGate->Offset_63_32 = (qwHandler >> 32) & 0xFFFFFFFF;
+
+    pGate->Selector = GDT_KCODE64_SELECTOR;
+    pGate->Fields = 0x8E00;
+    pGate->_Reserved = 0;
+
     return STATUS_SUCCESS;
 }

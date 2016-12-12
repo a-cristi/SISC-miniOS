@@ -1,6 +1,9 @@
 #ifndef _DTR_H_
 #define _DTR_H_
 
+#include "cpudefs.h"
+#include "winlists.h"
+
 #pragma pack(push)
 #pragma pack(1)
 
@@ -166,5 +169,18 @@ NTSTATUS
 DtrCreatePcpu(
     _Out_ PPCPU *Cpu
 );
+
+//
+// IRQ Handler
+//
+typedef VOID(*PFN_IrqHandler)(VOID);
+
+NTSTATUS
+DtrInstallIrqHandler(
+    _In_ WORD Index,
+    _In_ PFN_IrqHandler Handler
+);
+
+#define GetCurrentCpu()         ((PPCPU)__readgsqword(FIELD_OFFSET(PCPU, Self)))
 
 #endif // !_DTR_H_
