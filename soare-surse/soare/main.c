@@ -134,85 +134,44 @@ void EntryPoint(
     {
         volatile SIZE_T prev = 0;
         DWORD c = 0;
-        BYTE value = 0;
-        BYTE s = 0;
-        BYTE m = 0;
-        BYTE h = 0;
-        BYTE rb = 0;
+        RTC_DATE_TIME dt = { 0 };
 
-        do
-        {
-            __outbyte(0x70, 10 | 0x80);
-            value = __inbyte(0x71);
-        } while (0 != (value & 0x80));
-        do
-        {
-            __outbyte(0x70, 10 | 0x80);
-            value = __inbyte(0x71);
-        } while (0 == (value & 0x80));
-        do
-        {
-            __outbyte(0x70, 10 | 0x80);
-            value = __inbyte(0x71);
-        } while (0 != (value & 0x80));
-        __outbyte(0x70, 0 | 0x80);
-        s = __inbyte(0x71);
-        __outbyte(0x70, 2 | 0x80);
-        m = __inbyte(0x71);
-        __outbyte(0x70, 4 | 0x80);
-        h = __inbyte(0x71);
-        __outbyte(0x70, 11 | 0x80);
-        rb = __inbyte(0x71);
+        status = RtcGetTimeAndDate(&dt);
+        Log("%02d:%02d:%02d %02d/%02d/%04d\n", dt.Hours, dt.Minutes, dt.Seconds, dt.DayOfMonth, dt.Month, dt.Year);
 
-        if (0 == (rb & 0x04))
-        {
-            s = (s & 0x0F) + ((s / 16) * 10);
-            m = (m & 0x0F) + ((m / 16) * 10);
-            h = ((h & 0x0F) + (((h & 0x70) / 16) * 10)) | (h & 0x80);
-            //d = (d & 0x0F) + ((d / 16) * 10);
-            //m = (m & 0x0F) + ((m / 16) * 10);
-            //y = (y & 0x0F) + ((y / 16) * 10)
-        }
-
-        if ((0 == (rb & 0x02)) && (0 != (h & 0x80)))
-        {
-            h = ((h & 0x7F) + 12) % 24;
-        }
-
-        Log("%02d::%02d::%02d\n", h, m, s);
         _enable();
         while (TRUE)
         {
             extern volatile SIZE_T gPitTickCount;
             if (gPitTickCount - prev >= 5965)
             {
-                if (s < 59)
+                if (dt.Seconds < 59)
                 {
-                    s++;
+                    dt.Seconds++;
                 }
                 else
                 {
-                    s = 0;
-                    if (m < 59)
+                    dt.Seconds = 0;
+                    if (dt.Minutes < 59)
                     {
-                        m++;
+                        dt.Minutes++;
                     }
                     else
                     {
-                        m = 0;
-                        if (h < 23)
+                        dt.Minutes = 0;
+                        if (dt.Hours < 23)
                         {
-                            h++;
+                            dt.Hours++;
                         }
                         else
                         {
-                            h = 0;
+                            dt.Hours = 0;
                         }
                     }
                 }
                 prev = gPitTickCount;
                 //Log("%d\n", c);
-                Log("%d %02d::%02d::%02d\n", c, h, m, s);
+                Log("%02d:%02d:%02d %02d/%02d/%04d\n", dt.Hours, dt.Minutes, dt.Seconds, dt.DayOfMonth, dt.Month, dt.Year);
                 c++;
             }
             //Log(".");

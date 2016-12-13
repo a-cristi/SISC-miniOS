@@ -6,6 +6,9 @@
 #include "debugger.h"
 #include "log.h"
 
+//
+// PIT
+//
 
 //
 // PIT Registers

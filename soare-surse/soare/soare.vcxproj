@@ -258,6 +258,7 @@
     <ClInclude Include="panic.h" />
     <ClInclude Include="physmemmgr.h" />
     <ClInclude Include="pic.h" />
+    <ClInclude Include="rtc.h" />
     <ClInclude Include="screen.h" />
     <ClInclude Include="string.h" />
     <ClInclude Include="timer.h" />
@@ -280,6 +281,7 @@
     <ClCompile Include="panic.c" />
     <ClCompile Include="physmemmgr.c" />
     <ClCompile Include="pic.c" />
+    <ClCompile Include="rtc.c" />
     <ClCompile Include="screen.c" />
     <ClCompile Include="snprintf.c" />
     <ClCompile Include="string.c" />
