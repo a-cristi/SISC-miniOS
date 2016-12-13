@@ -552,9 +552,9 @@ HwStoreSs:
 ;;
 ;; Interrupts
 ;;
-global IsrHndUnexpected
-IsrHndUnexpected:
-    ;; we have SS, RSP, EFLAGS, CS, RIP on the stack
+global IsrHndSpurious
+IsrHndSpurious:
+    ;; Spurious IRQ, just do an IRETQ without sending an EOI
     IRETQ
 
 global IsrHndPic

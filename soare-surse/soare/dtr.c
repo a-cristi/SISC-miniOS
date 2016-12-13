@@ -5,7 +5,7 @@
 #include "kernel.h"
 #include "log.h"
 
-extern VOID IsrHndUnexpected(VOID);
+extern VOID IsrHndSpurious(VOID);
 
 VOID HwLoadTr(_In_ WORD Selector);
 VOID HwLoadCs(_In_ WORD Selector);
@@ -27,6 +27,30 @@ NTSTATUS
 ExInitExceptionHandling(
     _Inout_ INTERRUPT_GATE *Idt
 );
+
+
+static
+VOID
+_DtrInstallSpuriousHandlers(
+    _In_ PPCPU Cpu
+)
+{
+    BYTE spuriousVectors[] = { 0x27 };
+    QWORD qwHandler = (QWORD)IsrHndSpurious;
+
+    for (BYTE i = 0; i < sizeof(spuriousVectors) / sizeof(spuriousVectors[0]); i++)
+    {
+        PINTERRUPT_GATE pGate;
+        pGate = &Cpu->Idt[spuriousVectors[i]];
+        memset(pGate, 0, sizeof(INTERRUPT_GATE));
+        pGate->Offset_15_00 = qwHandler & 0xFFFF;
+        pGate->Offset_31_16 = (qwHandler >> 16) & 0xFFFF;
+        pGate->Offset_63_32 = (qwHandler >> 32) & 0xFFFFFFFF;
+
+        pGate->Selector = GDT_KCODE64_SELECTOR;
+        pGate->Fields = 0x8E00;
+    }
+}
 
 
 NTSTATUS
@@ -62,20 +86,8 @@ DtrInitAndLoadAll(
     // prepare the IDT
     ExInitExceptionHandling(Cpu->Idt);
 
-    // for some reason 0x27 is invoked as soon as we _enable()
-    {
-        WORD i = 0x27;
-        QWORD qwHandler = (QWORD)IsrHndUnexpected;
-        PINTERRUPT_GATE pGate;
-        pGate = &Cpu->Idt[i];
-        memset(pGate, 0, sizeof(INTERRUPT_GATE));
-        pGate->Offset_15_00 = qwHandler & 0xFFFF;
-        pGate->Offset_31_16 = (qwHandler >> 16) & 0xFFFF;
-        pGate->Offset_63_32 = (qwHandler >> 32) & 0xFFFFFFFF;
-
-        pGate->Selector = GDT_KCODE64_SELECTOR;
-        pGate->Fields = 0x8E00;
-    }
+    // install a dummy handler for the spurious IRQs
+    _DtrInstallSpuriousHandlers(Cpu);
 
     // setup GDTR
     Cpu->Gdtr.Address = (QWORD)&Cpu->Gdt;
