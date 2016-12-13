@@ -5,6 +5,8 @@
 #include "kernel.h"
 #include "log.h"
 
+extern VOID IsrHndUnexpected(VOID);
+
 VOID HwLoadTr(_In_ WORD Selector);
 VOID HwLoadCs(_In_ WORD Selector);
 VOID HwLoadDs(_In_ WORD Selector);
@@ -57,8 +59,23 @@ DtrInitAndLoadAll(
     Cpu->Gdt.Tss.Base_63_32 = ((QWORD)&Cpu->Tss >> 32) & 0xFFFFFFFF;
     Cpu->Gdt.Tss.Fields = 0x89; // Present, DPL = 0
 
-    // prepare the IST
+    // prepare the IDT
     ExInitExceptionHandling(Cpu->Idt);
+
+    // for some reason 0x27 is invoked as soon as we _enable()
+    {
+        WORD i = 0x27;
+        QWORD qwHandler = (QWORD)IsrHndUnexpected;
+        PINTERRUPT_GATE pGate;
+        pGate = &Cpu->Idt[i];
+        memset(pGate, 0, sizeof(INTERRUPT_GATE));
+        pGate->Offset_15_00 = qwHandler & 0xFFFF;
+        pGate->Offset_31_16 = (qwHandler >> 16) & 0xFFFF;
+        pGate->Offset_63_32 = (qwHandler >> 32) & 0xFFFFFFFF;
+
+        pGate->Selector = GDT_KCODE64_SELECTOR;
+        pGate->Fields = 0x8E00;
+    }
 
     // setup GDTR
     Cpu->Gdtr.Address = (QWORD)&Cpu->Gdt;
@@ -156,14 +173,19 @@ DtrInstallIrqHandler(
         return STATUS_INVALID_PARAMETER_4;
     }
 
+
     pGate = &pCpu->Idt[Index];
+    Log("[IDT] Installing %018p as the handler for IRQ 0x%04x [%018p:%018p]...\n", 
+        qwHandler, Index, pCpu->Idtr.Address, pGate);
+    memset(pGate, 0, sizeof(INTERRUPT_GATE));
     pGate->Offset_15_00 = qwHandler & 0xFFFF;
     pGate->Offset_31_16 = (qwHandler >> 16) & 0xFFFF;
     pGate->Offset_63_32 = (qwHandler >> 32) & 0xFFFFFFFF;
 
     pGate->Selector = GDT_KCODE64_SELECTOR;
     pGate->Fields = 0x8E00;
-    pGate->_Reserved = 0;
+    Log("DPL %d IST %d P: %d S %d Tpe: 0x%04x", pGate->DPL, pGate->Ist, pGate->P, pGate->S, pGate->Type);
+    __lidt(&pCpu->Idtr);
 
     return STATUS_SUCCESS;
 }

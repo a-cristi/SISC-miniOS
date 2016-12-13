@@ -37,7 +37,7 @@
 #define PIT_CMD_COUNTER2            0x80
 
 
-static volatile SIZE_T gPitTickCount;
+volatile SIZE_T gPitTickCount;
 static BOOLEAN gPitInited;
 
 extern VOID IsrHndPic(VOID);
@@ -106,9 +106,18 @@ _PitStart(
     ocw |= (Counter & PIT_CMD_COUNTER_MASK);
     _PitSendCommand(ocw);
 
-    _PitSendData(divisor & 0xFF, Counter >> 6);
-    _PitSendData((divisor >> 8) & 0xFF, Counter >> 6);
+    _PitSendData(PIT_CMD_COUNTER0 == Counter ? PIT_REG_COUNTER0 : PIT_REG_COUNTER2, divisor & 0xFF);
+    _PitSendData(PIT_CMD_COUNTER0 == Counter ? PIT_REG_COUNTER0 : PIT_REG_COUNTER2, (divisor >> 8) & 0xFF);
     gPitTickCount = 0;
+}
+
+
+VOID
+PitHandler(
+    VOID
+)
+{
+    gPitTickCount++;
 }
 
 
@@ -117,15 +126,21 @@ TmrInitializeTimer(
     VOID
 )
 {
-    NTSTATUS status = DtrInstallIrqHandler(PIC_IRQ_TIMER + PIC1_BASE, IsrHndPic);
+    NTSTATUS status = DtrInstallIrqHandler(IRQ2INTR(PIC_IRQ_TIMER), IsrHndPic);
     if (!NT_SUCCESS(status))
     {
         LogWithInfo("[ERROR] DtrInstallIrqHandler failed for 0x%04 -> %018p: 0x%08x\n", PIC_IRQ_TIMER, IsrHndPic, status);
         return status;
     }
 
+    {
+        DWORD divisor = 1193180 / 200;      // Fire 5965 times/s
+        __outbyte(0x43, 0x36);
+        __outbyte(0x40, divisor & 0xFF);
+        __outbyte(0x40, divisor >> 8);
+    }
     PicEnableIrq(PIC_IRQ_TIMER);
-    _PitStart(100, PIT_CMD_COUNTER0, PIT_CMD_MODE_RATE_GEN);
+    //_PitStart(100, PIT_CMD_COUNTER0, PIT_CMD_MODE_RATE_GEN);
 
     return STATUS_SUCCESS;
 }

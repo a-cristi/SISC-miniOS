@@ -552,13 +552,32 @@ HwStoreSs:
 ;;
 ;; Interrupts
 ;;
+global IsrHndUnexpected
+IsrHndUnexpected:
+    ;; we have SS, RSP, EFLAGS, CS, RIP on the stack
+    IRETQ
+
 global IsrHndPic
 
+extern gPitTickCount
+
 IsrHndPic:
+    cli
+    inc     qword [rel gPitTickCount]
+    push    rcx
+    mov     rcx, 0xabcd
+    ; xchg    bx, bx
+    pop     rcx
+    push    rax
+    mov     al, 0x20
+    out     0x20, al
+    pop     rax
+    sti
+    iretq
     GENERATE_TRAP_FRAME
 
     xor     rcx, rcx
-    mov     ecx, 'tmr0'
+    mov     ecx, 1234
     mov     QWORD [rbp + TRAP_FRAME.ExceptionCode], rcx
 
     mov     rdx, rbp
@@ -567,4 +586,3 @@ IsrHndPic:
     add     rsp, 4 * 8
 
     EXIT_EXCEPTION_HANDLER
-
