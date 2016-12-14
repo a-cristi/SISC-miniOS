@@ -13,6 +13,7 @@
 #include "virtmemmgr.h"
 #include "panic.h"
 #include "dtr.h"
+#include "timer.h"
 #include "debugger.h"
 
 extern KGLOBAL gKernelGlobalData;
@@ -42,8 +43,7 @@ void EntryPoint(
     Log("Multiboot info @ %018p\n", MultiBootInfo);
     if (!MbInterpretMultiBootInfo(MultiBootInfo))
     {
-        VgaSetForeground(vgaColorRed);
-        Log("[FATAL ERROR] Not enough information is available to boot the OS!\n");
+        LogWithInfo("[FATAL ERROR] Not enough information is available to boot the OS!\n");
         PANIC("Incomplete boot information\n");
     }
 
@@ -56,7 +56,7 @@ void EntryPoint(
 
     if (!MmPhysicalManagerInit((PVOID)(gKernelGlobalData.VirtualBase + gKernelGlobalData.KernelSize)))
     {
-        Log("[FATAL ERROR] Failed to init the physical memory manager.\n");
+        LogWithInfo("[FATAL ERROR] Failed to init the physical memory manager.\n");
         PANIC("Unable to initialize the physical memory manager\n");
     }
 
@@ -64,7 +64,7 @@ void EntryPoint(
     status = MmReservePhysicalRange(gKernelGlobalData.PhysicalBase, gKernelGlobalData.KernelSize);
     if (!NT_SUCCESS(status))
     {
-        Log("[FATAL ERROR] Failed to reserve the kernel memory area.\n");
+        LogWithInfo("[FATAL ERROR] Failed to reserve the kernel memory area.\n");
         PANIC("Unable to reserve enough physical memory for the kernel\n");
     }
 
@@ -72,21 +72,21 @@ void EntryPoint(
     pmmgEnd = 0;
     MmGetPmmgrReservedPhysicalRange(&pmmgrStart, &pmmgEnd);
 
-    Log("%018p bytes (%d MB) of physical memory are available out of %018p bytes (%d MB)\n", 
+    LogWithInfo("%018p bytes (%d MB) of physical memory are available out of %018p bytes (%d MB)\n",
         MmGetTotalFreeMemory(), ByteToMb(MmGetTotalFreeMemory()), totalMemory, ByteToMb(totalMemory));
 
-    Log("Guard @ %018p = 0x%08x\n", &guard, guard);
+    LogWithInfo("Guard @ %018p = 0x%08x\n", &guard, guard);
 
     status = MmVirtualManagerInit(totalMemory, 
         gKernelGlobalData.PhysicalBase, gKernelGlobalData.VirtualBase,
         gKernelGlobalData.KernelSize + pmmgEnd - pmmgrStart);
     if (!NT_SUCCESS(status))
     {
-        Log("[FATAL ERROR] MmVirtualManagerInit: 0x%08x\n", status);
+        LogWithInfo("[FATAL ERROR] MmVirtualManagerInit: 0x%08x\n", status);
         PANIC("Failed to initialize the virtual memory manager");
     }
 
-    Log("Guard @ %018p = 0x%08x\n", &guard, guard);
+    LogWithInfo("Guard @ %018p = 0x%08x\n", &guard, guard);
     if (guard != GUARD_VALUE)
     {
         LogWithInfo("[FATAL ERROR] Stack guard value was corrupted!\n");
@@ -100,7 +100,7 @@ void EntryPoint(
         LogWithInfo("[FATAL ERROR] DtrCreatePcpu failed: 0x%08x\n", status);
         PANIC("Failed to create the BSP structure!");
     }
-    Log("BSP CPU page @ %018p\n", pBsp);
+    LogWithInfo("BSP CPU page @ %018p\n", pBsp);
     pBsp->IsBsp = TRUE;
     pBsp->Number = 0;
     pBsp->Self = pBsp;
@@ -111,10 +111,22 @@ void EntryPoint(
         PANIC("Failed to initialize the BSP!");
     }
 
-    Log("> Initializing PIC... ");
+    Log("> Initializing PIC...\n");
     PicInitialize();
-    Log("Done!\n");
+    Log("\t PIC Initialized!\n");
 
+    Log("> Initializing the timer...\n");
+    status = TmrInitializeTimer();
+    if (!NT_SUCCESS(status))
+    {
+        LogWithInfo("\n[ERROR] TmrInitializeTimer failed: 0x%08x\n", status);
+        PANIC("Failed to initilize the system timer!");
+    }
+    Log("\t Timer Initialized!\n");
+    DbgBreak();
+
+    _enable();
+    while (TRUE);
     DbgBreak();
     __halt();
 }

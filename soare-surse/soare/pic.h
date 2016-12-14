@@ -69,16 +69,16 @@ PicDisable(
 //
 // IRQ numbers
 //
-#define PIC_IRQ_TIMER       0
-#define PIC_IRQ_KEYBOARD    1
-#define PIC_IRQ_PIC2        2
-#define PIC_IRQ_SERIAL2     3
-#define PIC_IRQ_SERIAL1     4
-#define PIC_IRQ_PARALLEL2   5
-#define PIC_IRQ_DISKETTE    6
-#define PIC_IRQ_PARALLEL1   7
-#define PIC_IRQ_CMOS_TIMER  8
-#define PIC_IRQ_CGARETRACE  9
+#define PIC_IRQ_TIMER       0 
+#define PIC_IRQ_KEYBOARD    1 
+#define PIC_IRQ_PIC2        2 
+#define PIC_IRQ_SERIAL2     3 
+#define PIC_IRQ_SERIAL1     4 
+#define PIC_IRQ_PARALLEL2   5 
+#define PIC_IRQ_DISKETTE    6 
+#define PIC_IRQ_PARALLEL1   7 
+#define PIC_IRQ_CMOS_TIMER  8 
+#define PIC_IRQ_CGARETRACE  9 
 #define PIC_IRQ_AUX         12
 #define PIC_IRQ_FPU         13
 #define PIC_IRQ_HDC         14

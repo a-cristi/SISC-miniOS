@@ -131,6 +131,40 @@ ENDSTRUC
     hlt
 %endmacro
 
+%macro RESTORE_CONTEXT_FROM_TRAP_FRAME 0
+    mov     rax, [rbp + TRAP_FRAME.RegRax]
+    mov     rbx, [rbp + TRAP_FRAME.RegRbx]
+    mov     rcx, [rbp + TRAP_FRAME.RegRcx]
+    mov     rdx, [rbp + TRAP_FRAME.RegRdx]
+    mov     rsi, [rbp + TRAP_FRAME.RegRsi]
+    mov     rdi, [rbp + TRAP_FRAME.RegRdi]
+    mov     r8, [rbp + TRAP_FRAME.RegR8]
+    mov     r9, [rbp + TRAP_FRAME.RegR9]
+    mov     r10, [rbp + TRAP_FRAME.RegR10]
+    mov     r11, [rbp + TRAP_FRAME.RegR11]
+    mov     r12, [rbp + TRAP_FRAME.RegR12]
+    mov     r13, [rbp + TRAP_FRAME.RegR13]
+    mov     r14, [rbp + TRAP_FRAME.RegR14]
+    mov     r15, [rbp + TRAP_FRAME.RegR15]
+    
+    mov     rsp, rbp
+    add     rsp, (TRAP_FRAME_size - (7 * 8))
+    pop     rbp
+%endmacro
+
+%macro BEGIN_IRQ 0
+    cli
+%endmacro
+
+%macro END_IRQ 0
+    push    rax
+    mov     al, 0x20    ;; Send EOI
+    out     0x20, al
+    pop     rax
+    sti
+    iretq
+%endmacro
+
 ;;
 ;; Export the handlers
 ;;
@@ -547,3 +581,34 @@ HwStoreSs:
     xor     rax, rax
     mov     ax, ss
     ret
+
+
+;;
+;; Interrupts
+;;
+global IsrHndSpurious
+IsrHndSpurious:
+    ;; Spurious IRQ, just do an IRETQ without sending an EOI
+    IRETQ
+
+;;
+;; PIT IRQ
+;;
+extern PitHandler
+global IsrHndPic
+
+exter
+
+IsrHndPic:
+    BEGIN_IRQ
+    GENERATE_TRAP_FRAME "e"
+
+    mov     QWORD [rbp + TRAP_FRAME.ExceptionCode], 0
+
+    mov     rcx, rbp
+    sub     rsp, 4 * 8
+    call    PitHandler
+    add     rsp, 4 * 8
+
+    RESTORE_CONTEXT_FROM_TRAP_FRAME
+    END_IRQ

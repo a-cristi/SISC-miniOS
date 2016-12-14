@@ -101,6 +101,12 @@
     <ClCompile Include="dtr.c">
       <Filter>Source Files\kernel</Filter>
     </ClCompile>
+    <ClCompile Include="timer.c">
+      <Filter>Source Files\kernel</Filter>
+    </ClCompile>
+    <ClCompile Include="rtc.c">
+      <Filter>Source Files\kernel</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="boot.h">
@@ -173,6 +179,15 @@
       <Filter>Header Files\memory</Filter>
     </ClInclude>
     <ClInclude Include="dtr.h">
+      <Filter>Header Files\kernel</Filter>
+    </ClInclude>
+    <ClInclude Include="cpudefs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="timer.h">
+      <Filter>Header Files\kernel</Filter>
+    </ClInclude>
+    <ClInclude Include="rtc.h">
       <Filter>Header Files\kernel</Filter>
     </ClInclude>
   </ItemGroup>

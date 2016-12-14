@@ -5,6 +5,8 @@
 #include "kernel.h"
 #include "log.h"
 
+extern VOID IsrHndSpurious(VOID);
+
 VOID HwLoadTr(_In_ WORD Selector);
 VOID HwLoadCs(_In_ WORD Selector);
 VOID HwLoadDs(_In_ WORD Selector);
@@ -25,6 +27,30 @@ NTSTATUS
 ExInitExceptionHandling(
     _Inout_ INTERRUPT_GATE *Idt
 );
+
+
+static
+VOID
+_DtrInstallSpuriousHandlers(
+    _In_ PPCPU Cpu
+)
+{
+    BYTE spuriousVectors[] = { 0x27 };
+    QWORD qwHandler = (QWORD)IsrHndSpurious;
+
+    for (BYTE i = 0; i < sizeof(spuriousVectors) / sizeof(spuriousVectors[0]); i++)
+    {
+        PINTERRUPT_GATE pGate;
+        pGate = &Cpu->Idt[spuriousVectors[i]];
+        memset(pGate, 0, sizeof(INTERRUPT_GATE));
+        pGate->Offset_15_00 = qwHandler & 0xFFFF;
+        pGate->Offset_31_16 = (qwHandler >> 16) & 0xFFFF;
+        pGate->Offset_63_32 = (qwHandler >> 32) & 0xFFFFFFFF;
+
+        pGate->Selector = GDT_KCODE64_SELECTOR;
+        pGate->Fields = 0x8E00;
+    }
+}
 
 
 NTSTATUS
@@ -57,8 +83,11 @@ DtrInitAndLoadAll(
     Cpu->Gdt.Tss.Base_63_32 = ((QWORD)&Cpu->Tss >> 32) & 0xFFFFFFFF;
     Cpu->Gdt.Tss.Fields = 0x89; // Present, DPL = 0
 
-    // prepare the IST
+    // prepare the IDT
     ExInitExceptionHandling(Cpu->Idt);
+
+    // install a dummy handler for the spurious IRQs
+    _DtrInstallSpuriousHandlers(Cpu);
 
     // setup GDTR
     Cpu->Gdtr.Address = (QWORD)&Cpu->Gdt;
@@ -111,6 +140,10 @@ DtrInitAndLoadAll(
     HwLoadSs(GDT_KDATA64_SELECTOR);
     Log("Done!\n");
 
+    // Set the PCPU
+    __writemsr(IA32_GS_BASE, Cpu);
+    __writemsr(IA32_KERNEL_GS_BASE, Cpu);
+
     return STATUS_SUCCESS;
 }
 
@@ -128,5 +161,43 @@ DtrCreatePcpu(
     }
 
     *Cpu = &gBsp;
+    return STATUS_SUCCESS;
+}
+
+
+NTSTATUS
+DtrInstallIrqHandler(
+    _In_ WORD Index,
+    _In_ PFN_IrqHandler Handler
+)
+{
+    QWORD qwHandler = (QWORD)Handler;
+    PPCPU pCpu = GetCurrentCpu();
+    PINTERRUPT_GATE pGate;
+
+    if (Index >= IDT_ENTRIES)
+    {
+        return STATUS_INVALID_PARAMETER_1;
+    }
+
+    if (!Handler)
+    {
+        return STATUS_INVALID_PARAMETER_4;
+    }
+
+
+    pGate = &pCpu->Idt[Index];
+    Log("[IDT] Installing %018p as the handler for IRQ 0x%04x [%018p:%018p]...\n", 
+        qwHandler, Index, pCpu->Idtr.Address, pGate);
+    memset(pGate, 0, sizeof(INTERRUPT_GATE));
+    pGate->Offset_15_00 = qwHandler & 0xFFFF;
+    pGate->Offset_31_16 = (qwHandler >> 16) & 0xFFFF;
+    pGate->Offset_63_32 = (qwHandler >> 32) & 0xFFFFFFFF;
+
+    pGate->Selector = GDT_KCODE64_SELECTOR;
+    pGate->Fields = 0x8E00;
+    Log("DPL %d IST %d P: %d S %d Tpe: 0x%04x", pGate->DPL, pGate->Ist, pGate->P, pGate->S, pGate->Type);
+    __lidt(&pCpu->Idtr);
+
     return STATUS_SUCCESS;
 }

@@ -62,6 +62,9 @@ PicInitialize(
     // send ICW4: operate in 80x86 mode
     _PicOutByte(PIC1_DATA_PORT, PIC_ICW4_8086);
     _PicOutByte(PIC2_DATA_PORT, PIC_ICW4_8086);
+
+    // mask everything
+    PicDisable();
 }
 
 
@@ -76,7 +79,7 @@ PicDisable(
 
 
 VOID
-PicEnableIrq(
+PicDisableIrq(
     _In_ BYTE IrqNumber
 )
 {
@@ -94,7 +97,7 @@ PicEnableIrq(
 
 
 VOID
-PicDisableIrq(
+PicEnableIrq(
     _In_ BYTE IrqNumber
 )
 {
@@ -108,4 +111,14 @@ PicDisableIrq(
     }
 
     _PicSetImr(gImrMaster, gImrSlave);
+}
+
+
+VOID
+PicSendCommand(
+    _In_ BYTE Cmd,
+    _In_ BOOLEAN SlavePic
+)
+{
+    _PicOutByte(SlavePic ? PIC2_CMD_PORT : PIC1_CMD_PORT, Cmd);
 }
