@@ -1,5 +1,6 @@
 #include "defs.h"
 #include "ntstatus.h"
+#include "rtc.h"
 #include "dtr.h"
 #include "panic.h"
 #include "pic.h"
@@ -40,10 +41,13 @@
 #define PIT_CMD_COUNTER2            0x80
 
 
-volatile SIZE_T gPitTickCount;
+static volatile SIZE_T gPitTickCount;
+static volatile SIZE_T gLastPitTickCount;
 static BOOLEAN gPitInited;
+static RTC_DATE_TIME gDateTime = { 0 };
 
 extern VOID IsrHndPic(VOID);
+
 
 static
 __inline
@@ -112,15 +116,73 @@ _PitStart(
     _PitSendData(PIT_CMD_COUNTER0 == Counter ? PIT_REG_COUNTER0 : PIT_REG_COUNTER2, divisor & 0xFF);
     _PitSendData(PIT_CMD_COUNTER0 == Counter ? PIT_REG_COUNTER0 : PIT_REG_COUNTER2, (divisor >> 8) & 0xFF);
     gPitTickCount = 0;
+    gLastPitTickCount = 0;
 }
 
 
 VOID
 PitHandler(
-    VOID
+    _In_ PVOID Context
 )
 {
+    UNREFERENCED_PARAMETER(Context);
     gPitTickCount++;
+
+    if (gPitTickCount >= gLastPitTickCount + 5965)
+    {
+        gLastPitTickCount = gPitTickCount;
+
+        if (gDateTime.Seconds < 59)
+        {
+            gDateTime.Seconds++;
+        }
+        else
+        {
+            gDateTime.Seconds = 0;
+
+            if (gDateTime.Minutes < 59)
+            {
+                gDateTime.Minutes++;
+            }
+            else
+            {
+                gDateTime.Minutes = 0;
+
+                if (gDateTime.Hours < 23)
+                {
+                    gDateTime.Hours++;
+                }
+                else
+                {
+                    static BYTE daysPerMonth[] = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+                    gDateTime.Hours = 1;
+
+                    if (gDateTime.DayOfMonth < daysPerMonth[gDateTime.Month])
+                    {
+                        gDateTime.DayOfMonth++;
+                    }
+                    else
+                    {
+                        gDateTime.DayOfMonth = 0;
+
+                        if (gDateTime.Month < 12)
+                        {
+                            gDateTime.Month++;
+                        }
+                        else
+                        {
+                            gDateTime.Month = 1;
+                            gDateTime.Year++;
+                        }
+                    }
+                }
+            }
+        }
+
+        //LogUpdateHeader(48, "%02d:%02d:%02d %02d/%02d/%04d\n",
+        //    gDateTime.Hours, gDateTime.Minutes, gDateTime.Seconds,
+        //    gDateTime.DayOfMonth, gDateTime.Month, gDateTime.Year);
+    }
 }
 
 
@@ -129,7 +191,14 @@ TmrInitializeTimer(
     VOID
 )
 {
-    NTSTATUS status = DtrInstallIrqHandler(IRQ2INTR(PIC_IRQ_TIMER), IsrHndPic);
+    NTSTATUS status = RtcGetTimeAndDate(&gDateTime);
+    if (!NT_SUCCESS(status))
+    {
+        LogWithInfo("[ERROR] RtcGetTimeAndDate failed: 0x%08x\n", status);
+        return status;
+    }
+
+    status = DtrInstallIrqHandler(IRQ2INTR(PIC_IRQ_TIMER), IsrHndPic);
     if (!NT_SUCCESS(status))
     {
         LogWithInfo("[ERROR] DtrInstallIrqHandler failed for 0x%04 -> %018p: 0x%08x\n", PIC_IRQ_TIMER, IsrHndPic, status);
