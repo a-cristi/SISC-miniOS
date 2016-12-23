@@ -179,9 +179,9 @@ PitHandler(
             }
         }
 
-        //LogUpdateHeader(48, "%02d:%02d:%02d %02d/%02d/%04d\n",
-        //    gDateTime.Hours, gDateTime.Minutes, gDateTime.Seconds,
-        //    gDateTime.DayOfMonth, gDateTime.Month, gDateTime.Year);
+        UpdateHeader(TRUE, "%02d:%02d:%02d %02d/%02d/%04d",
+            gDateTime.Hours, gDateTime.Minutes, gDateTime.Seconds,
+            gDateTime.DayOfMonth, gDateTime.Month, gDateTime.Year);
     }
 }
 
