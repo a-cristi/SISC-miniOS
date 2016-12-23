@@ -22,7 +22,7 @@ KLog(
 
     if (0 != (LOG_MEDIUM_SERIAL & Flags))
     {
-        SerialPutString(buf, len + 1);
+        SerialPutString(buf, len);
     }
     if (0 != (LOG_MEDIUM_VGA & Flags))
     {
@@ -41,6 +41,7 @@ KLogWithInfo(
     ...
 )
 {
+    const DWORD tscDiv = 1000000;
     va_list ap;
     INT32 len;
     CHAR buf[KLOG_MAX_CHARS] = { 0 };
@@ -49,7 +50,8 @@ KLogWithInfo(
     len = rpl_vsnprintf(buf, KLOG_MAX_CHARS - 1, Format, ap);
     va_end(ap);
 
-    len = KLog(LOG_MEDIUM_DEFAULT, "%s:%d\t%s", File, Line, buf);
+    len = KLog(LOG_MEDIUM_DEFAULT, "[%d.%06d] %s:%d\t%s", 
+        __rdtsc() / tscDiv, __rdtsc() % tscDiv, File, Line, buf);
 
     return len;
 }
