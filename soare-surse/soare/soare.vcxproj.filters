@@ -107,6 +107,9 @@
     <ClCompile Include="rtc.c">
       <Filter>Source Files\kernel</Filter>
     </ClCompile>
+    <ClCompile Include="serial.c">
+      <Filter>Source Files\kernel</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="boot.h">
@@ -188,6 +191,9 @@
       <Filter>Header Files\kernel</Filter>
     </ClInclude>
     <ClInclude Include="rtc.h">
+      <Filter>Header Files\kernel</Filter>
+    </ClInclude>
+    <ClInclude Include="serial.h">
       <Filter>Header Files\kernel</Filter>
     </ClInclude>
   </ItemGroup>

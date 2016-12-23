@@ -624,10 +624,10 @@ MmVirtualManagerInit(
 
     pagesNeeded = 1 + pml4eCount + pdpeCount + pdeCount;
 
-    Log("[VIRTMEM] In order to map 0x%llx bytes (%d MB) we need:\n", MaximumMemorySize, ByteToMb(MaximumMemorySize));
-    Log("\t%d PML4 Entries, %d PDP Entries, %d PD Entries, %d PT Entries\n",
-        pml4eCount, pdpeCount, pdeCount, pteCount);
-    Log("\t%d pages (%d MB)\n", pagesNeeded, ByteToMb(pagesNeeded * PAGE_SIZE_4K));
+    //Log("[VIRTMEM] In order to map 0x%llx bytes (%d MB) we need:\n", MaximumMemorySize, ByteToMb(MaximumMemorySize));
+    //Log("\t%d PML4 Entries, %d PDP Entries, %d PD Entries, %d PT Entries\n",
+    //    pml4eCount, pdpeCount, pdeCount, pteCount);
+    //Log("\t%d pages (%d MB)\n", pagesNeeded, ByteToMb(pagesNeeded * PAGE_SIZE_4K));
 
     pdbr = 0;
     status = MmAllocPhysicalPage(&pdbr);
@@ -643,7 +643,6 @@ MmVirtualManagerInit(
 
     // install the recursive entry
     pPml4->Entries[PTE_RECURSIVE_INDEX] = CLEAN_PHYADDR(pdbr) | PML4E_P | PML4E_RW | PML4E_US;
-    Log("%018p\n", (QWORD)&MaximumMemorySize - (QWORD)&status);
 
     // also make the current PDBR recursive
     pPml4 = (PT *)CLEAN_PHYADDR(__readcr3());

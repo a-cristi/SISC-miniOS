@@ -260,6 +260,7 @@
     <ClInclude Include="pic.h" />
     <ClInclude Include="rtc.h" />
     <ClInclude Include="screen.h" />
+    <ClInclude Include="serial.h" />
     <ClInclude Include="string.h" />
     <ClInclude Include="timer.h" />
     <ClInclude Include="varargs.h" />
@@ -283,6 +284,7 @@
     <ClCompile Include="pic.c" />
     <ClCompile Include="rtc.c" />
     <ClCompile Include="screen.c" />
+    <ClCompile Include="serial.c" />
     <ClCompile Include="snprintf.c" />
     <ClCompile Include="string.c" />
     <ClCompile Include="timer.c" />

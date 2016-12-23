@@ -4,6 +4,7 @@
 #include "boot.h"
 #include "screen.h"
 #include "log.h"
+#include "serial.h"
 #include "pic.h"
 #include "multiboot.h"
 #include "mb_util.h"
@@ -30,17 +31,20 @@ void EntryPoint(
     DWORD guard = GUARD_VALUE;
     PPCPU pBsp = NULL;
 
+    // init logging mechanisms
     VgaInit(VGA_MEMORY_BUFFER, vgaColorWhite, vgaColorBlack);
+    IoSerialInitPort(PORT_COM1, TRUE);
+    SerialPutString("hello", sizeof("hello"));
     Log("Built on %s %s\n", __DATE__, __TIME__);
 
     // make sure we are at 1T
     if ((SIZE_T)&EntryPoint < KBASE_VIRTUAL)
     {
-        Log("[FATAL ERROR] We are not using the expected VA space!\n");
+        LogWithInfo("[FATAL ERROR] We are not using the expected VA space!\n");
         PANIC(" We are not using the expected VA space");
     }
 
-    Log("Multiboot info @ %018p\n", MultiBootInfo);
+    LogWithInfo("Multiboot info @ %018p\n", MultiBootInfo);
     if (!MbInterpretMultiBootInfo(MultiBootInfo))
     {
         LogWithInfo("[FATAL ERROR] Not enough information is available to boot the OS!\n");
@@ -111,18 +115,18 @@ void EntryPoint(
         PANIC("Failed to initialize the BSP!");
     }
 
-    Log("> Initializing PIC...\n");
+    Log("> Initializing PIC...");
     PicInitialize();
-    Log("\t PIC Initialized!\n");
+    Log(" Done!\n");
 
-    Log("> Initializing the timer...\n");
+    Log("> Initializing the timer...");
     status = TmrInitializeTimer();
     if (!NT_SUCCESS(status))
     {
         LogWithInfo("\n[ERROR] TmrInitializeTimer failed: 0x%08x\n", status);
         PANIC("Failed to initilize the system timer!");
     }
-    Log("\t Timer Initialized!\n");
+    Log(" Done!\n");
     DbgBreak();
 
     _enable();
