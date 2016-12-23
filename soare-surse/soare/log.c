@@ -3,9 +3,11 @@
 #include "string.h"
 #include "log.h"
 #include "screen.h"
+#include "serial.h"
 
 INT32
 KLog(
+    _In_ DWORD Flags,
     _In_ PCHAR Format,
     ...
 )
@@ -18,7 +20,14 @@ KLog(
     len = rpl_vsnprintf(buf, KLOG_MAX_CHARS - 1, Format, ap);
     va_end(ap);
 
-    VgaPutString(buf);
+    if (0 != (LOG_MEDIUM_SERIAL & Flags))
+    {
+        SerialPutString(buf, len + 1);
+    }
+    if (0 != (LOG_MEDIUM_VGA & Flags))
+    {
+        VgaPutString(buf);
+    }
 
     return len;
 }
@@ -40,7 +49,7 @@ KLogWithInfo(
     len = rpl_vsnprintf(buf, KLOG_MAX_CHARS - 1, Format, ap);
     va_end(ap);
 
-    len = KLog("%s:%d\t%s", File, Line, buf);
+    len = KLog(LOG_MEDIUM_DEFAULT, "%s:%d\t%s", File, Line, buf);
 
     return len;
 }

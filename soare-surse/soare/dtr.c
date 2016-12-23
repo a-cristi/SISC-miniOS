@@ -102,43 +102,44 @@ DtrInitAndLoadAll(
     Cpu->Idtr.Size = sizeof(Cpu->Idt) - 1;
 
     // load the GDT
-    Log("Loading the GDT on CPU %d...", Cpu->ApicId);
+    LogWithInfo("[%d] Loading the GDT...\n", Cpu->ApicId);
     _lgdt(&Cpu->Gdtr);
-    Log("Done!\n");
+    LogWithInfo("[%d] Done!\n", Cpu->ApicId);
 
     // load the IDT
-    Log("Loading the IDT on CPU %d...", Cpu->ApicId);
+    LogWithInfo("[%d] Loading the IDT...\n", Cpu->ApicId);
     __lidt(&Cpu->Idtr);
-    Log("Done!\n");
+    LogWithInfo("[%d] Done!\n", Cpu->ApicId);
 
     // load the TR
-    Log("Loading the TR on CPU %d...", Cpu->ApicId);
+    LogWithInfo("[%d] Loading the TR...\n", Cpu->ApicId);
     HwLoadTr(GDT_TSS_SELECTOR);
+    LogWithInfo("[%d] Done!\n", Cpu->ApicId);
 
     // Load Selectors
-    Log("Loading CS on CPU %d...", Cpu->ApicId);
+    LogWithInfo("[%d] Loading CS...", Cpu->ApicId);
     HwLoadCs(GDT_KCODE64_SELECTOR);
-    Log("Done!\n");
+    LogWithInfo("[%d] Done!\n", Cpu->ApicId);
 
-    Log("Loading DS on CPU %d...", Cpu->ApicId);
+    LogWithInfo("[%d] Loading DS...", Cpu->ApicId);
     HwLoadDs(GDT_KDATA64_SELECTOR);
-    Log("Done!\n");
+    LogWithInfo("[%d] Done!\n", Cpu->ApicId);
     
-    Log("Loading ES on CPU %d...", Cpu->ApicId);
+    LogWithInfo("[%d] Loading ES...", Cpu->ApicId);
     HwLoadEs(GDT_KDATA64_SELECTOR);
-    Log("Done!\n");
+    LogWithInfo("[%d] Done!\n", Cpu->ApicId);
 
-    Log("Loading FS on CPU %d...", Cpu->ApicId);
+    LogWithInfo("[%d] Loading FS...", Cpu->ApicId);
     HwLoadFs(GDT_KDATA64_SELECTOR);
-    Log("Done!\n");
+    LogWithInfo("[%d] Done!\n", Cpu->ApicId);
 
-    Log("Loading GS on CPU %d...", Cpu->ApicId);
+    LogWithInfo("[%d] Loading GS...", Cpu->ApicId);
     HwLoadGs(GDT_KDATA64_SELECTOR);
-    Log("Done!\n");
+    LogWithInfo("[%d] Done!\n", Cpu->ApicId);
 
-    Log("Loading SS on CPU %d...", Cpu->ApicId);
+    LogWithInfo("[%d] Loading SS...", Cpu->ApicId);
     HwLoadSs(GDT_KDATA64_SELECTOR);
-    Log("Done!\n");
+    LogWithInfo("[%d] Done!\n", Cpu->ApicId);
 
     // Set the PCPU
     __writemsr(IA32_GS_BASE, Cpu);
@@ -187,7 +188,7 @@ DtrInstallIrqHandler(
 
 
     pGate = &pCpu->Idt[Index];
-    Log("[IDT] Installing %018p as the handler for IRQ 0x%04x [%018p:%018p]...\n", 
+    LogWithInfo("[IDT] Installing %018p as the handler for IRQ 0x%04x [%018p:%018p]...\n", 
         qwHandler, Index, pCpu->Idtr.Address, pGate);
     memset(pGate, 0, sizeof(INTERRUPT_GATE));
     pGate->Offset_15_00 = qwHandler & 0xFFFF;
@@ -196,7 +197,7 @@ DtrInstallIrqHandler(
 
     pGate->Selector = GDT_KCODE64_SELECTOR;
     pGate->Fields = 0x8E00;
-    Log("DPL %d IST %d P: %d S %d Tpe: 0x%04x", pGate->DPL, pGate->Ist, pGate->P, pGate->S, pGate->Type);
+    LogWithInfo("DPL %d IST %d P: %d S %d Tpe: 0x%04x", pGate->DPL, pGate->Ist, pGate->P, pGate->S, pGate->Type);
     __lidt(&pCpu->Idtr);
 
     return STATUS_SUCCESS;

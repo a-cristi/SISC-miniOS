@@ -36,7 +36,7 @@ MmDumpMemoryMap(
     {
         PMMAP_ENTRY pEntry = &Map[i];
 
-        Log("[%d / %d] [%018p, %018p) is %d (%s)\n", i, Count, pEntry->Base, 
+        NLog("[%d / %d] [%018p, %018p) is %d (%s)\n", i, Count, pEntry->Base,
             pEntry->Base + pEntry->Length, pEntry->Type, MmMemoryTypeToString(pEntry->Type));
     }
 }
@@ -80,7 +80,7 @@ MmInitMemoryMapFromMultiboot(
 
     gBootMemoryLimit = gBootMemoryMap[gBootMemoryMapEntries - 1].Base + gBootMemoryMap[gBootMemoryMapEntries - 1].Length;
     
-    Log("[MMAP] Parsed %d entries for a total size of 0x%llx Bytes (%d MB)\n", 
+    NLog("[MMAP] Parsed %d entries for a total size of 0x%llx Bytes (%d MB)\n", 
         gBootMemoryMapEntries, gBootMemoryLimit, ByteToMb(gBootMemoryLimit));
     MmDumpMemoryMap(gBootMemoryMap, gBootMemoryMapEntries);
 }

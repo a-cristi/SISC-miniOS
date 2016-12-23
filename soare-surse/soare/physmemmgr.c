@@ -53,7 +53,7 @@ _MmChangeContigousPhysicalRangeState(
 
     end = page + ROUND_UP(Length, gPhysMemState.PageSize);
 
-    Log("[PHYMEM] %s range [%018p, %018p)...\n", Reserve ? "Reserving" : "Freeing", page, end);
+    LogWithInfo("[PHYMEM] %s range [%018p, %018p)...\n", Reserve ? "Reserving" : "Freeing", page, end);
 
     while (page < end)
     {
@@ -457,56 +457,6 @@ MmIsPhysicalPageFree(
 
     return !_MmIsBitSet(bit);
 }
-
-
-/// not needed for now
-//NTSTATUS
-//MmGetPhysicalRange(
-//    _In_ QWORD PageCount,
-//    _Inout_ QWORD *RangeStart
-//)
-//{
-//    NTSTATUS status;
-//    QWORD startIndex = 0;
-//
-//    if (!RangeStart)
-//    {
-//        return STATUS_INVALID_PARAMETER_1;
-//    }
-//
-//    if (gPhysMemState.FreePages < PageCount)
-//    {
-//        return STATUS_INSUFF_SERVER_RESOURCES;
-//    }
-//
-//    status = _MmGetFreePhysicalRangeIndex(PageCount, &startIndex);
-//    if (!NT_SUCCESS(status))
-//    {
-//        LogWithInfo("[ERROR] _MmGetFreePhysicalRangeIndex failed: 0x%08x\n", status);
-//        return status;
-//    }
-//
-//    *RangeStart = startIndex * gPhysMemState.PageSize;
-//
-//    for (QWORD i = 0; i < PageCount; i++)
-//    {
-//        status = MmReservePhysicalPage(i * gPhysMemState.PageSize + *RangeStart);
-//        if (!NT_SUCCESS(status))
-//        {
-//            LogWithInfo("[ERROR] MmReservePhysicalPage failed for %018p: 0x%08x\n", 
-//                i * gPhysMemState.PageSize + *RangeStart, status);
-//
-//            for (QWORD j = 0; j < i; j++)
-//            {
-//                MmFreePhysicalPage(j * gPhysMemState.PageSize + *RangeStart);
-//            }
-//
-//            return status;
-//        }
-//    }
-//
-//    return STATUS_SUCCESS;
-//}
 
 
 QWORD
