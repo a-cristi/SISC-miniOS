@@ -16,6 +16,7 @@
 #include "dtr.h"
 #include "timer.h"
 #include "debugger.h"
+#include "buildinfo.h"
 
 extern KGLOBAL gKernelGlobalData;
 
@@ -34,7 +35,7 @@ void EntryPoint(
     // init logging mechanisms
     VgaInit(VGA_MEMORY_BUFFER, vgaColorWhite, vgaColorBlack, TRUE);
     IoSerialInitPort(PORT_COM1, TRUE);
-    Log("Built on %s %s\n", __DATE__, __TIME__);
+    Log("Built on %s %s\n", SOARE_BUILD_DATE, SOARE_BUILD_DATE);
 
     // make sure we are at 1T
     if ((SIZE_T)&EntryPoint < KBASE_VIRTUAL)
