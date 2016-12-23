@@ -30,6 +30,13 @@ KPrint(
     ...
 );
 
+INT32
+KLogUpdateHeader(
+    _In_ BOOLEAN RightToLeft,
+    _In_ PCHAR Format,
+    ...
+);
+
 #define FNAME(MaxChars) ((sizeof(__FILE__) - 1 <= (MaxChars)) ? (__FILE__) : ((__FILE__) + sizeof(__FILE__) - 1 - (MaxChars)))
 
 #define LogWithInfo(fmt, ...)       KLogWithInfo(FNAME(16), __LINE__, fmt, __VA_ARGS__)
@@ -38,5 +45,6 @@ KPrint(
 #define Log(fmt, ...)               KLog(LOG_MEDIUM_ALL, fmt, __VA_ARGS__)
 
 #define Display(fmt, ...)           KLog(LOG_MEDIUM_VGA, fmt, __VA_ARGS__)
+#define UpdateHeader(r2l, fmt, ...) KLogUpdateHeader((r2l), fmt, __VA_ARGS__)
 
 #endif // !_LOG_H_

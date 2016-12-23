@@ -197,3 +197,41 @@ VgaControlHeader(
         gScreen.StartRow = 0;
     }
 }
+
+
+VOID
+VgaUpdateHeader(
+    _In_ INT16 Position,
+    _In_ VGA_COLOR Foreground,
+    _In_ VGA_COLOR Background,
+    _In_ const PCHAR Str
+)
+{
+    WORD i = 0;
+    BOOLEAN bRightToLeft = FALSE;
+    WORD start = Position;
+    WORD stop = VGA_COLUMNS;
+
+    if (Position < 0)
+    {
+        Position *= -1;
+        bRightToLeft = TRUE;
+        start = VGA_COLUMNS - Position;
+    }
+
+    if (Position >= VGA_COLUMNS || !Str)
+    {
+        return;
+    }
+
+    for (WORD col = start; col < stop; col++)
+    {
+        if (Str[i] == '\0')
+        {
+            break;
+        }
+
+        gScreen.Buffer[VGA_MAKE_OFFSET(0, col)] = VGA_MAKE_ENTRY(Str[i], VGA_MAKE_STYLE(Foreground, Background));
+        i++;
+    }
+}

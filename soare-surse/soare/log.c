@@ -55,3 +55,24 @@ KLogWithInfo(
 
     return len;
 }
+
+
+INT32
+KLogUpdateHeader(
+    _In_ BOOLEAN RightToLeft,
+    _In_ PCHAR Format,
+    ...
+)
+{
+    va_list ap;
+    INT32 len;
+    CHAR buf[VGA_HEADER_MAX_SIZE + 1] = { 0 };
+
+    va_start(ap, Format);
+    len = rpl_vsnprintf(buf, VGA_HEADER_MAX_SIZE, Format, ap);
+    va_end(ap);
+
+    VgaUpdateHeader(RightToLeft ? -1 * (WORD)len : 0, vgaColorLightBlue, vgaColorBlack, buf);
+
+    return len;
+}
