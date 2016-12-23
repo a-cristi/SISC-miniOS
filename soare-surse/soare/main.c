@@ -32,9 +32,8 @@ void EntryPoint(
     PPCPU pBsp = NULL;
 
     // init logging mechanisms
-    VgaInit(VGA_MEMORY_BUFFER, vgaColorWhite, vgaColorBlack);
+    VgaInit(VGA_MEMORY_BUFFER, vgaColorWhite, vgaColorBlack, TRUE);
     IoSerialInitPort(PORT_COM1, TRUE);
-    SerialPutString("hello", sizeof("hello"));
     Log("Built on %s %s\n", __DATE__, __TIME__);
 
     // make sure we are at 1T
