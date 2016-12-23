@@ -1,147 +1,248 @@
 #include "defs.h"
+#include "ntstatus.h"
 #include "serial.h"
 
-#define COM1        0x3f8
-#define COM2        0x2f8
-#define COM3        0x3e8
-#define COM4        0x2e8
+#define NEW_LINE            '\n'
+#define CARRIAGE_RETURN     '\r'
+#define TAB                 '\t'
 
-#define COM_DEFAULT COM1
-
-// 
-// Configuration
-//
-//  IO Port Offset      Setting of DLAB     Register mapped to this port
-//  +0                  0                   Data register; read from / write to when communicating
-//  +1                  0                   Interrupt Enable Register
-//  +0                  1                   With DLAB set to 1, this is the least significant byte of the divisor value for setting the baud rate.
-//  +1                  1                   With DLAB set to 1, this is the most significant byte of the divisor value.
-//  +2                  -                   Interrupt Identification and FIFO control registers
-//  +3                  -                   Line Control Register. The most significant bit of this register is the DLAB.
-//  +4                  -                   Modem Control Register.
-//  +5                  -                   Line Status Register.
-//  +6                  -                   Modem Status Register.
-//  +7                  -                   Scratch Register
-
-VOID
-SerComInit(
-    VOID
-)
+typedef struct _COM_PORT
 {
-    // disable interrupts
-    __outbyte(COM_DEFAULT + 1, 0x00);
+    WORD        Port;
+    BOOLEAN     Inited;
+} COM_PORT, *PCOM_PORT;
 
-    // enable DLAB
-    __outbyte(COM_DEFAULT + 3, 0x80);
+PCOM_PORT gDefaultPort = NULL;
 
-    // divisor low byte (baud rate 115200)
-    __outbyte(COM_DEFAULT + 0, 0x01);
-
-    // divisor hight byte
-    __outbyte(COM_DEFAULT + 1, 0x00);
-
-    // 8n1 (8 bits, no parity, 1 stop bit)
-    __outbyte(COM_DEFAULT + 3, 0x03);
-
-    // enable FIFO
-    __outbyte(COM_DEFAULT + 2, 0xC7);
-}
-
-
-static
-__forceinline
-BOOLEAN
-_SerRcvd(
-    _In_ WORD Com
-)
-{
-    return (0 != (__inbyte(Com + 5) & 1));
-}
-
-
-static
-__forceinline
-CHAR
-_SerReadPort(
-    _In_ WORD Com
-)
-{
-    while (!_SerRcvd(Com));
-
-    return __inbyte(Com);
-}
-
-
-CHAR
-SerReadData(
-    VOID
-)
-{
-    return _SerReadPort(COM_DEFAULT);
-}
-
-
-static
-__forceinline
-BOOLEAN
-_SerIsTransmitEmpty(
-    _In_ WORD Com
-)
-{
-    return (0 != (__inbyte(Com + 5) & 0x20));
-}
-
-
-static
-__forceinline
-VOID
-_SerWritePort(
-    _In_ WORD Com,
-    _In_ CHAR Ch
-)
-{
-    while (!_SerIsTransmitEmpty(Com));
-
-    __outbyte(Com, Ch);
-}
-
-
-VOID
-SerWriteByte(
-    _In_ BYTE Character
-)
-{
-    _SerWritePort(COM_DEFAULT, Character);
-}
-
-
-VOID
-SerWriteData(
-    _In_ PBYTE Data,
-    _In_ SIZE_T Size
-)
-{
-#define NEW_LINE        '\n'
-#define CARRIAGE_RETURN '\r'
-#define TAB             '\t'
-
-    if (!Data)
+COM_PORT gSerialPorts[] = {
+    // COM1
     {
-        return;
+        COM1,       // Port
+        FALSE       // Inited
+    },
+    // COM2
+    {
+        COM2,       // Port
+        FALSE       // Inited
+    },
+    // COM3
+    {
+        COM3,       // Port
+        FALSE       // Inited
+    },
+    // COM4
+    {
+        COM4,       // Port
+        FALSE       // Inited
+    }
+};
+
+
+NTSTATUS
+IoSerialInitPort(
+    _In_ WORD Port,  // PORT_COM*
+    _In_ BOOLEAN SetDefault
+)
+{
+    PCOM_PORT pPort = NULL;
+
+    if (Port > PORT_COM_LAST)
+    {
+        return STATUS_INVALID_PARAMETER_1;
     }
 
-    for (SIZE_T index = 0; index < Size; index++)
+    pPort = &gSerialPorts[Port];
+
+    if (pPort->Inited)
     {
-        switch (Data[index])
+        return STATUS_ALREADY_INITIALIZED;
+    }
+
+    // disable interrupts
+    __outbyte(pPort->Port + 1, 0x0);
+
+    // enable DLAB
+    __outbyte(pPort->Port + 3, 0x80);
+
+    // divisor low byte (baud rate 115200)
+    __outbyte(pPort->Port + 0, 0x01);
+
+    // divisor high byte
+    __outbyte(pPort->Port + 1, 0x00);
+
+    // 8N1 (8 bits, no parity, 1 stop bit)
+    __outbyte(pPort->Port + 3, 0x03);
+
+    // enable FIFO
+    __outbyte(pPort->Port + 2, 0xC7);
+
+    // enable IRQs
+    __outbyte(pPort->Port + 4, 0x0B);
+
+    // should we use this as the default port?
+    if (SetDefault)
+    {
+        gDefaultPort = pPort;
+    }
+
+    return STATUS_SUCCESS;
+}
+
+
+VOID
+IoSerialPreInit(
+    VOID
+)
+{
+    // nothing to do for now
+}
+
+
+static __forceinline INT32
+_SerRcvd(
+    _In_ WORD PortAddress   // COM*, NOT PORT_COM* !!
+)
+{
+    return __inbyte(PortAddress + 5) & 1;
+}
+
+
+__inline CHAR
+SerialReadPort(
+    __in WORD PortAddress
+)
+{
+    while (!_SerRcvd(PortAddress));
+
+    return __inbyte(PortAddress);
+}
+
+
+CHAR
+SerialRead(
+    VOID
+)
+{
+    return SerialReadPort(gDefaultPort->Port);
+}
+
+
+static __forceinline INT32
+_SerIsTransmitEmpty(
+    _In_ WORD PortAddress
+)
+{
+    return __inbyte(PortAddress + 5) & 0x20;
+}
+
+
+__inline VOID
+SerialWritePort(
+    _In_ WORD PortAddress,
+    _In_ CHAR Character
+)
+{
+    while (!_SerIsTransmitEmpty(PortAddress));
+
+    __outbyte(PortAddress, Character);
+}
+
+
+VOID
+SerialWrite(
+    _In_ CHAR Character
+)
+{
+    SerialWritePort(gDefaultPort->Port, Character);
+}
+
+
+__inline VOID
+SerialPutStringToPort(
+    _In_ WORD PortAddress,
+    _In_ PCHAR Str,
+    _In_ SIZE_T Elements
+)
+{
+    SIZE_T index = 0;
+
+    for (index = 0; index < Elements; index++)
+    {
+        switch (Str[index])
         {
         case NEW_LINE:
         case CARRIAGE_RETURN:
-            _SerWritePort(COM_DEFAULT, NEW_LINE);
+            SerialWritePort(PortAddress, '\n');
             break;
 
         default:
-            _SerWritePort(COM_DEFAULT, Data[index]);
+            SerialWritePort(PortAddress, Str[index]);
             break;
         }
     }
+}
+
+
+VOID
+SerialPutString(
+    _In_ PCHAR Str,
+    _In_ SIZE_T Elements
+)
+{
+    if (Str)
+    {
+        SerialPutStringToPort(gDefaultPort->Port, Str, Elements);
+    }
+}
+
+
+__inline SIZE_T
+SerialReadStringFromPort(
+    _In_ WORD PortAddress,
+    _Out_ CHAR * Buffer,
+    _In_ SIZE_T BufferSize
+)
+{
+    SIZE_T i = 0;
+
+    BufferSize -= 1;
+
+    for (i = 0; i < BufferSize; i++)
+    {
+        CHAR ch = SerialReadPort(PortAddress);
+
+        switch (ch)
+        {
+        case NEW_LINE:
+        case CARRIAGE_RETURN:
+            Buffer[i] = '\0';
+            goto _exit;
+
+        default:
+            Buffer[i] = ch;
+            break;
+        }
+    }
+
+_exit:
+    // Add a zero at the end
+    Buffer[i] = '\0';
+    i++;
+
+    return i;
+}
+
+
+SIZE_T
+SerialReadString(
+    _Out_ CHAR * Buffer,
+    _In_ SIZE_T BufferSize
+)
+{
+    if (!Buffer)
+    {
+        return 0;
+    }
+
+    return SerialReadStringFromPort(gDefaultPort->Port, Buffer, BufferSize);
 }
