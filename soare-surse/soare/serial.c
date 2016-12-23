@@ -5,6 +5,7 @@
 #define NEW_LINE            '\n'
 #define CARRIAGE_RETURN     '\r'
 #define TAB                 '\t'
+#define NULL_TERMINATOR     '\0'
 
 typedef struct _COM_PORT
 {
@@ -174,6 +175,9 @@ SerialPutStringToPort(
         case CARRIAGE_RETURN:
             SerialWritePort(PortAddress, '\n');
             break;
+            
+        case NULL_TERMINATOR:
+            return;
 
         default:
             SerialWritePort(PortAddress, Str[index]);
