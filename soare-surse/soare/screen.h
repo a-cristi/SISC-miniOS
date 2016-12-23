@@ -32,7 +32,8 @@ VOID
 VgaInit(
     _In_ PVOID Buffer,
     _In_ VGA_COLOR DefaultForeground,
-    _In_ VGA_COLOR DefaultBackground
+    _In_ VGA_COLOR DefaultBackground,
+    _In_ BOOLEAN WithHeader
 );
 
 VOID
@@ -63,6 +64,11 @@ VgaSetForeground(
 VOID
 VgaSetBackground(
     _In_ VGA_COLOR Bg
+);
+
+VOID
+VgaEnableHeader(
+    _In_ BOOLEAN Enable
 );
 
 #endif // _SCREEN_H_

@@ -9,6 +9,8 @@ typedef struct _SCREEN
     WORD        CurrentRow;
     WORD        CurrentColumn;
 
+    WORD        StartRow;
+
     BYTE        CurrentColorStyle;  // background and foreground information
 } SCREEN, *PSCREEN;
 
@@ -28,7 +30,7 @@ _VgaScroll(
 )
 {
     // move everything up
-    for (WORD row = 0; row < gScreen.CurrentRow; row++)
+    for (WORD row = gScreen.StartRow; row < gScreen.CurrentRow; row++)
     {
         for (WORD column = 0; column < VGA_COLUMNS; column++)
         {
@@ -74,12 +76,14 @@ VOID
 VgaInit(
     _In_ PVOID Buffer,
     _In_ VGA_COLOR DefaultForeground,
-    _In_ VGA_COLOR DefaultBackground
+    _In_ VGA_COLOR DefaultBackground,
+    _In_ BOOLEAN WithHeader
 )
 {
     gScreen.Buffer = Buffer;
 
-    gScreen.CurrentColumn = gScreen.CurrentRow = 0;
+    gScreen.CurrentRow = gScreen.StartRow = WithHeader ? 1 : 0;
+    gScreen.CurrentColumn = 0;
     gScreen.CurrentColorStyle = VGA_MAKE_STYLE(DefaultForeground, DefaultBackground);
 
     CLS;
@@ -172,4 +176,24 @@ VgaSetBackground(
 
     // set the new background
     gScreen.CurrentColorStyle |= (Bg << 4);
+}
+
+
+VOID
+VgaControlHeader(
+    _In_ BOOLEAN Enable
+)
+{
+    if (Enable)
+    {
+        gScreen.StartRow = 1;
+        if (gScreen.CurrentRow < gScreen.StartRow)
+        {
+            gScreen.CurrentRow = gScreen.StartRow;
+        }
+    }
+    else
+    {
+        gScreen.StartRow = 0;
+    }
 }
