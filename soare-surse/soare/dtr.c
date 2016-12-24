@@ -197,7 +197,7 @@ DtrInstallIrqHandler(
 
     pGate->Selector = GDT_KCODE64_SELECTOR;
     pGate->Fields = 0x8E00;
-    LogWithInfo("DPL %d IST %d P: %d S %d Tpe: 0x%04x", pGate->DPL, pGate->Ist, pGate->P, pGate->S, pGate->Type);
+    LogWithInfo("DPL %d IST %d P: %d S %d Tpe: 0x%04x\n", pGate->DPL, pGate->Ist, pGate->P, pGate->S, pGate->Type);
     __lidt(&pCpu->Idtr);
 
     return STATUS_SUCCESS;
