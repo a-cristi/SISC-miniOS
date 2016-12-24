@@ -7,6 +7,11 @@
 #include "debugger.h"
 #include "panic.h"
 
+//
+// This is a very simple keyboard "driver". It should probably be designed as a state machine with a command queue.
+// Also, we assume that the keyboard is present and enabled, and simply do a self test and an interface test, but the
+// enable sequence and the checks should be done in a better way
+//
 
 //
 // Keyboard ports
@@ -274,7 +279,12 @@ KbHandler(
     _In_ PVOID Context
 )
 {
+    BYTE code;
+
     UNREFERENCED_PARAMETER(Context);
+
+    code = _KbEncReadBuffer();
+    Log("SCANCODE: 0x%02x\n", code);
 }
 
 
@@ -283,11 +293,37 @@ KbInit(
     VOID
 )
 {
+    BYTE reply;
     NTSTATUS status = DtrInstallIrqHandler(IRQ2INTR(PIC_IRQ_KEYBOARD), IsrHndKeyboard);
     if (!NT_SUCCESS(status))
     {
         LogWithInfo("[ERROR] DtrInstallIrqHandler failed for 0x%04 -> %018p: 0x%08x\n", PIC_IRQ_KEYBOARD, IsrHndKeyboard, status);
         return status;
+    }
+
+    // do the self test
+    KbCtrlSendCommand(CTRL_CMD_SELF_TEST);
+    reply = _KbEncReadBuffer();
+    if (CTRL_SELF_TEST_PASSED != reply)
+    {
+        Log("[ERROR] Keyboard self test failed: 0x%02x\n", reply);
+        return STATUS_INTERNAL_ERROR;
+    }
+
+    // do the interface test
+    KbCtrlSendCommand(CTRL_CMD_IFACE_TEST);
+    reply = _KbEncReadBuffer();
+    if (CTRL_IFACE_TEST_SUCCESS != reply)
+    {
+        Log("[ERROR] Keyboard interface test failed: 0x%02x\n", reply);
+        return STATUS_INTERNAL_ERROR;
+    }
+
+    // echo
+    if (ENC_CMD_ECHO != _KbEncSendCommandAndGetResponse(ENC_CMD_ECHO))
+    {
+        Log("[ERROR] Keyboard did not reply with 0xEE to ECHO Encoder command!\n");
+        return STATUS_INTERNAL_ERROR;
     }
 
     gKbState.Alt = gKbState.Ctrl = gKbState.Shift = FALSE;
@@ -301,11 +337,11 @@ KbInit(
     KbUpdateLeds(TRUE, TRUE, TRUE);
     KbUpdateLeds(gKbState.ScrollLock, gKbState.NumLock, gKbState.CapsLock);
 
+    // get the Keyboard ID
     _KbEncSendCommandAndGetResponse(ENC_CMD_KB_ID);
     LogWithInfo("[KB] ID: 0x%02x 0x%02x\n", _KbEncReadBuffer(), _KbEncReadBuffer());
 
-    _KbEncSendCommandAndGetResponse(ENC_CMD_ECHO);
-
+    // and let the IRQs come!
     PicEnableIrq(PIC_IRQ_KEYBOARD);
 
     return STATUS_SUCCESS;
