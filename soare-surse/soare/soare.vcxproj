@@ -257,6 +257,7 @@
     <ClInclude Include="defs.h" />
     <ClInclude Include="dtr.h" />
     <ClInclude Include="kernel.h" />
+    <ClInclude Include="keyboard.h" />
     <ClInclude Include="kpool.h" />
     <ClInclude Include="limits.h" />
     <ClInclude Include="log.h" />
@@ -285,6 +286,7 @@
     <ClCompile Include="dtr.c" />
     <ClCompile Include="excp.c" />
     <ClCompile Include="kernel.c" />
+    <ClCompile Include="keyboard.c" />
     <ClCompile Include="kpool.c" />
     <ClCompile Include="log.c" />
     <ClCompile Include="main.c" />

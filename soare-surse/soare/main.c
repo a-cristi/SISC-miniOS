@@ -17,6 +17,7 @@
 #include "timer.h"
 #include "debugger.h"
 #include "buildinfo.h"
+#include "keyboard.h"
 
 extern KGLOBAL gKernelGlobalData;
 
@@ -35,7 +36,7 @@ void EntryPoint(
     // init logging mechanisms
     VgaInit(VGA_MEMORY_BUFFER, vgaColorWhite, vgaColorBlack, TRUE);
     IoSerialInitPort(PORT_COM1, TRUE);
-    Log("Built on %s %s\n", SOARE_BUILD_DATE, SOARE_BUILD_DATE);
+    Log("Built on %s %s\n", SOARE_BUILD_DATE, SOARE_BUILD_TIME);
 
     // make sure we are at 1T
     if ((SIZE_T)&EntryPoint < KBASE_VIRTUAL)
@@ -127,9 +128,16 @@ void EntryPoint(
         PANIC("Failed to initilize the system timer!");
     }
     Log(" Done!\n");
-    DbgBreak();
 
     _enable();
+    Log("> Initializing the keyboard...");
+    status = KbInit();
+    if (!NT_SUCCESS(status))
+    {
+        LogWithInfo("\n[ERROR] KbInit failed: 0x%08x\n", status);
+        PANIC("Failed to initilize the keyboard!");
+    }
+    Log(" Done!\n");
     while (TRUE);
     DbgBreak();
     __halt();

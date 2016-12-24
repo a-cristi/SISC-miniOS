@@ -1,0 +1,312 @@
+#include "defs.h"
+#include "ntstatus.h"
+#include "keyboard.h"
+#include "dtr.h"
+#include "pic.h"
+#include "log.h"
+#include "debugger.h"
+#include "panic.h"
+
+
+//
+// Keyboard ports
+//
+#define KB_ENC_REG_IN_BUFFER        0x60    // Read: read input buffer; Write: write command
+#define KB_ENC_REG_CMD              0x60    // same as above, defined with another name for clarity
+#define KB_CTRL_REG_STATUS          0x64    // Read: read status register; Write: write command
+#define KB_CTRL_REG_CMD             0x64    // same as above, defined with another name for clarity
+
+//
+// Status register configuration
+//
+#define KB_STATUS_OUT_BUFFER        BIT(0)  // 0: output buffer empty (don't read); 1: output buffer full (can be read)
+#define KB_STATUS_IN_BUFFER         BIT(1)  // 0: input buffer empty (can be written); 1: input buffer full (don't write)
+#define KB_STATYS_SYS_FLAG          BIT(2)  // 0: after power/reset; 1: after self-test success
+#define KB_STATUS_CMD_DATA          BIT(3)  // 0: last write was data (port 0x60); 1: last write was a command (port 0x64)
+#define KB_STATUS_LOCKED            BIT(4)  // 0: locked; 1: not locked
+#define KB_STATUS_AUX_FULL          BIT(5)  // 
+#define KB_STATUS_TIMEOUT           BIT(6)  // 0: OK; 1: timeout
+#define KB_STATUS_PARITY_ERROR      BIT(7)  // 0: OK; 1: parity error
+
+//
+// Encoder commands
+//
+#define ENC_CMD_SET_LEDS            0xED    // set LEDs
+#define ENC_CMD_ECHO                0xEE    // returns 0xEE to port 0x60 as a diagnostic test
+#define ENC_CMD_ALT_SCANCODE_SET    0xF0    // set alternate scan code set
+#define ENC_CMD_KB_ID               0xF2    // send 2 byte keyboard ID code as the next 2 bytes to be read from port 0x60
+#define ENC_CMD_SET_REPEAT_RATE     0xF3    // set autorepeat delay and repeat rate
+#define ENC_CMD_ENABLE_KB           0xF4    // enable keyboard
+#define ENC_CMD_RESET               0xF5    // reset to power on condition and wait for enable command
+#define ENC_CMD_RESET_START_SCAN    0xF6    // reset to power on condition and begin scanning keyboard
+#define ENC_CMD_SET_AUTOREPEAT      0xF7    // set all keys to autorepeat (PS/2 only)
+#define ENC_CMD_SET_MAKE_BRAKE      0xF8    // set all keys to send make code and break code (PS/2 only)
+#define ENC_CMD_ONLY_MAKE           0xF9    // set all keys to generate only make codes
+#define ENC_CMD_AUTO_MAKE_BRAKE     0xFA    // set all keys to autorepeat and generate make/brake codes
+#define ENC_CMD_SET_KEY_AUTOREPEAT  0xFB    // set a single key to autorepeat
+#define ENC_CMD_SET_KEY_MAKE_BREAK  0xFC    // set a single key to generate make/brake codes
+#define ENC_CMD_SET_KEY_BREAK       0xFD    // set a single key to generate only break codes
+#define ENC_CMD_RESEND_RESULT       0xFE    // resend last result
+#define ENC_CMD_RESET_START_TEST    0xFF    // reset to power on state and start self test
+
+//
+// Set LEDs command
+//
+// After 0xED is sent, the next byte written to port 0x60 updates the LEDs
+#define LED_SCROLL_LOCK             BIT(0)  // 0: off; 1: on
+#define LED_NUM_LOCK                BIT(1)  // 0: off; 1: on
+#define LED_CAPS_LOCK               BIT(2)  // 0: off; 1: on
+
+//
+// Set autorepeat delay and repeat rate command
+//
+// After 0xF3 is send, the next byte written to port 0x60 has the following format
+#define MAKE_REPEAT(rate, delay)    ((((delay) & 0x3) << 5) | ((rate) & 0xF))
+#define RATE_MAX_CH_SEC             0x00    // ~30 characters/second
+#define RATE_MIN_CH_SEC             0x1F    // ~2  characters/second
+#define DELAY_0_25                  0       // 1/4 seconds
+#define DELAY_0_50                  1       // 1/2 seconds
+#define DELAY_0_75                  2       // 3/4 seconds
+#define DELAY_1                     3       // 1   second
+
+//
+// Encoder return values (usually scan codes, but it can also signal errors)
+//
+#define ENC_IS_PRESS_SCAN_CODE(c)   (((c) >= 0x01 && (c) <= 0x58) || ((c) <= 0x81 || (c) >= 0xD8))
+#define ENC_BUFFER_OVERRUN          0x00    // internal buffer overrun
+#define ENC_ACK                     0xFA    // command acknowledged
+#define ENC_ECHO                    0xEE    // returned from the echo command
+#define ENC_RESEND                  0xFE    // keyboard request for system to resend the last command
+
+//
+// Controller commands
+//
+#define CTRL_CMD_READ               0x20    // read command byte
+#define CTRL_CMD_WRITE              0x60    // write command byte
+#define CTRL_CMD_SELF_TEST          0xAA    // self test
+#define CTRL_CMD_IFACE_TEST         0xAB    // interface test
+#define CTRL_CMD_DISABLE_KB         0xAD    // disable keyboard
+#define CTRL_CMD_ENABLE_KB          0xAE    // enable keyboard
+#define CTRL_CMD_READ_IN_PORT       0xC0    // read input port
+#define CTRL_CMD_READ_OUT_PORT      0xD0    // read output port
+#define CTRL_CMD_WRITE_OUT_PORT     0xD1    // write output port
+#define CTRL_CMD_READ_TEST          0xE0    // read test inputs
+#define CTRL_CMD_SYSTEM_RESET       0xFE    // system reset
+#define CTRL_CMD_DISABLE_MOUSE      0xA7    // disable mouse port
+#define CTRL_CMD_ENABLE_MOUSE       0xA8    // enable mouse port
+#define CTRL_CMD_TEST_MOUSE         0xA9    // test mouse port
+#define CTRL_CMD_WRITE_MOUSE        0xD4    // write to mouse
+
+//
+// Command byte (0x20) configuration
+//
+#define CTRL_CMDBYTE_KB_INT_ENABLE      BIT(0)  // 0: disable keyboard IRQ; 1: enable keyboard IRQ
+#define CTRL_CMDBYTE_MOUSE_INT_ENABLE   BIT(1)  // 0: disable mouse IRQ; 1: enable mouse IRQ; only EISA/PS2
+#define CTRL_CMDBYTE_SYSTEM_FLAG        BIT(2)  // 0: cold reboot; 1: warm reboot (BAT completed)
+#define CTRL_CMDBYTE_IGNORE_KB_LOCK     BIT(3)  // 0: no action; 1: force bit 4 of status register to 1 (not locked)
+#define CTRL_CMDBYTE_KB_ENABLE          BIT(4)  // 0: enable keyboard; 1: disable keyboard
+#define CTRL_CMDBYTE_MOUSE_ENABLE       BIT(5)  // 0: enable mouse; 1: disable mouse
+#define CTRL_CMDBYTE_TRANSLATION        BIT(6)  // 0: no translation; 1: translate key scan codes
+// bit 7 is unused and should be 0
+
+//
+// Controller self test return values (port 0x60)
+//
+#define CTRL_SELF_TEST_PASSED           0x55
+#define CTRL_SELF_TEST_FAILED           0xFC
+
+//
+// Controller interface test return values (port 0x60)
+//
+#define CTRL_IFACE_TEST_SUCCESS         0x00
+#define CTRL_IFACE_CLOCK_LINE_LOW       0x01    // keyboard clock line stuck low
+#define CTRL_IFACE_CLOCK_LINE_HIGH      0x02    // keyboard clock line stuck high
+#define CTRL_IFACE_DATA_LINE_HIGH       0x03    // keyboard data line stuck high
+#define CTRL_IFACE_GENERAL_ERROR        0xFF
+
+
+//
+// Keyboard state
+//
+typedef struct _KB_STATE
+{
+    BOOLEAN     Enabled;
+
+    BYTE        ScanCode;
+    
+    BOOLEAN     NumLock;
+    BOOLEAN     ScrollLock;
+    BOOLEAN     CapsLock;
+
+    BOOLEAN     Shift;
+    BOOLEAN     Alt;
+    BOOLEAN     Ctrl;
+
+    BOOLEAN     Error;
+
+    BOOLEAN     BatFailed;
+    BOOLEAN     DiagnosticFailed;
+    
+    BOOLEAN     ResendRequested;
+} KB_STATE, *PKB_STATE;
+
+static KB_STATE gKbState;
+
+
+//
+// ASM handler
+//
+extern VOID IsrHndKeyboard(VOID);
+
+
+static __forceinline BYTE
+_KbCtrlReadStatus(
+    VOID
+)
+{
+    return __inbyte(KB_CTRL_REG_STATUS);
+}
+
+static __inline VOID
+KbCtrlSendCommand(
+    _In_ BYTE Cmd
+)
+{
+    // wait for the input buffer to be clear
+    while (0 != (_KbCtrlReadStatus() & KB_STATUS_IN_BUFFER));
+
+    __outbyte(KB_CTRL_REG_CMD, Cmd);
+}
+
+
+static __inline VOID
+_KbEncSendCommand(
+    _In_ BYTE Cmd
+)
+{
+    // commands sent to the encoder are sent to the controller first, so make sure that the controller input buffer is clear
+    while (0 != (_KbCtrlReadStatus() & KB_STATUS_IN_BUFFER));
+
+    __outbyte(KB_ENC_REG_CMD, Cmd);
+}
+
+
+static __inline BYTE
+_KbEncReadBuffer(
+    VOID
+)
+{
+    // make sure the output buffer is full
+    while (0 == (_KbCtrlReadStatus() & KB_STATUS_OUT_BUFFER));
+
+    return __inbyte(KB_ENC_REG_IN_BUFFER);
+}
+
+
+static __inline BYTE
+_KbEncSendCommandAndGetResponse(
+    _In_ BYTE Cmd
+)
+{
+    INT16 retryCount = 3;
+
+    do 
+    {
+        BYTE reply;
+
+        _KbEncSendCommand(Cmd);
+
+        reply = _KbEncReadBuffer();
+        if (ENC_ACK == reply)
+        {
+            return reply;
+        }
+        else if (ENC_ECHO == reply && ENC_ECHO == Cmd)
+        {
+            return reply;
+        }
+        else if (ENC_RESEND != reply)
+        {
+            LogWithInfo("[KB] 0x%02x -> 0x%02x\n", Cmd, reply);
+            return reply;
+        }
+
+        LogWithInfo("[KB] 0x%02x -> RESEND: %d\n", Cmd, retryCount);
+        retryCount--;
+    } while (retryCount > 0);
+
+    LogWithInfo("[KB] 0x%02x -> TIMEOUT\n", Cmd);
+    return 0xFF;
+}
+
+
+VOID
+KbUpdateLeds(
+    _In_ BOOLEAN ScrollLock,
+    _In_ BOOLEAN NumLock,
+    _In_ BOOLEAN CapsLock
+)
+{
+    BYTE data = 0
+        | (ScrollLock ? LED_SCROLL_LOCK : 0)
+        | (NumLock ? LED_NUM_LOCK : 0)
+        | (CapsLock ? LED_CAPS_LOCK : 0);
+
+    //_KbEncSendCommand(ENC_CMD_SET_LEDS);
+    //_KbEncSendCommand(data);
+    _KbEncSendCommandAndGetResponse(ENC_CMD_SET_LEDS);
+    _KbEncSendCommandAndGetResponse(data);
+}
+
+
+VOID
+KbResetSystem(
+    VOID
+)
+{
+    KbCtrlSendCommand(CTRL_CMD_WRITE);
+    _KbEncSendCommand(CTRL_CMD_SYSTEM_RESET);
+}
+
+
+VOID
+KbHandler(
+    _In_ PVOID Context
+)
+{
+    UNREFERENCED_PARAMETER(Context);
+}
+
+
+NTSTATUS
+KbInit(
+    VOID
+)
+{
+    NTSTATUS status = DtrInstallIrqHandler(IRQ2INTR(PIC_IRQ_KEYBOARD), IsrHndKeyboard);
+    if (!NT_SUCCESS(status))
+    {
+        LogWithInfo("[ERROR] DtrInstallIrqHandler failed for 0x%04 -> %018p: 0x%08x\n", PIC_IRQ_KEYBOARD, IsrHndKeyboard, status);
+        return status;
+    }
+
+    gKbState.Alt = gKbState.Ctrl = gKbState.Shift = FALSE;
+    gKbState.NumLock = gKbState.ScrollLock = gKbState.CapsLock = FALSE;
+    gKbState.BatFailed = gKbState.DiagnosticFailed = gKbState.Error = gKbState.ResendRequested = FALSE;
+    gKbState.Enabled = TRUE;
+    gKbState.ScanCode = 0;
+
+    // play with the LEDs so the keyboard will know who is its new master!
+    KbUpdateLeds(FALSE, FALSE, FALSE);
+    KbUpdateLeds(TRUE, TRUE, TRUE);
+    KbUpdateLeds(gKbState.ScrollLock, gKbState.NumLock, gKbState.CapsLock);
+
+    _KbEncSendCommandAndGetResponse(ENC_CMD_KB_ID);
+    LogWithInfo("[KB] ID: 0x%02x 0x%02x\n", _KbEncReadBuffer(), _KbEncReadBuffer());
+
+    _KbEncSendCommandAndGetResponse(ENC_CMD_ECHO);
+
+    PicEnableIrq(PIC_IRQ_KEYBOARD);
+
+    return STATUS_SUCCESS;
+}
