@@ -177,7 +177,9 @@ typedef struct _KB_CONTEXT
     
     BOOLEAN     ResendRequested;
 
-    BOOLEAN     Extended;    
+    BOOLEAN     Extended;
+
+    volatile CHAR   LastPrintableChar;
 } KB_CONTEXT, *PKB_CONTEXT;
 
 #include "kbdcodes.h"
@@ -310,6 +312,7 @@ KbHandler(
 
     UNREFERENCED_PARAMETER(Context);
 
+    gKbContext.LastPrintableChar = 0;
     code = _KbEncReadBuffer();
 
     // check for extended
@@ -420,7 +423,8 @@ KbHandler(
 
             if (IsPrintable(key))
             {
-                Log("%c", key);
+                //Log("%c", key);
+                gKbContext.LastPrintableChar = key;
             }
             else
             {
@@ -480,6 +484,7 @@ KbInit(
     gKbContext.BatFailed = gKbContext.DiagnosticFailed = gKbContext.Error = gKbContext.ResendRequested = FALSE;
     gKbContext.Enabled = TRUE;
     gKbContext.Extended = FALSE;
+    gKbContext.LastPrintableChar = 0;
 
     // play with the LEDs so the keyboard will know who is its new master!
     KbUpdateLeds(FALSE, FALSE, FALSE);
@@ -502,6 +507,16 @@ KbGetCh(
     VOID
 )
 {
-    while (TRUE);
-    return 0;
+    CHAR ch;
+
+    // wait for a printable char
+    do 
+    {
+        ch = gKbContext.LastPrintableChar;
+    } while (ch == 0);
+
+    // consume it
+    gKbContext.LastPrintableChar = 0;
+
+    return ch;
 }
