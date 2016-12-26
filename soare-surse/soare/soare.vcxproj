@@ -256,6 +256,7 @@
     <ClInclude Include="debugger.h" />
     <ClInclude Include="defs.h" />
     <ClInclude Include="dtr.h" />
+    <ClInclude Include="kbdcodes.h" />
     <ClInclude Include="kernel.h" />
     <ClInclude Include="keyboard.h" />
     <ClInclude Include="kpool.h" />

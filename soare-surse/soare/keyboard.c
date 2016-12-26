@@ -133,19 +133,44 @@
 //
 // Keyboard state
 //
-typedef struct _KB_STATE
+
+typedef enum _KB_STATE
+{
+    kbStateNormal = 0,
+    kbStateShiftHeld,
+    kbStateCtrlHeld,
+    kbStateAltHeld,
+    kbStateNumLock,
+    kbStateCapsLock,
+    kbStateShiftCaps,
+    kbStateShiftNum,
+    kbStateAltGr,
+    kbStateShiftCtrl,
+    kbStateCount,       // must be the last one, NOT a valid state
+} KB_STATE, *PKB_STATE;
+
+typedef struct _KB_CONTEXT
 {
     BOOLEAN     Enabled;
 
     BYTE        ScanCode;
     
-    BOOLEAN     NumLock;
+    // state
+    KB_STATE    State;
+
+    // easier manipulation for LEDs
     BOOLEAN     ScrollLock;
+    BOOLEAN     NumLock;
     BOOLEAN     CapsLock;
 
-    BOOLEAN     Shift;
-    BOOLEAN     Alt;
+    // ctrl keys
     BOOLEAN     Ctrl;
+
+    // shift keys
+    BOOLEAN     Shift;
+
+    // alt keys
+    BOOLEAN     Alt;
 
     BOOLEAN     Error;
 
@@ -153,9 +178,13 @@ typedef struct _KB_STATE
     BOOLEAN     DiagnosticFailed;
     
     BOOLEAN     ResendRequested;
-} KB_STATE, *PKB_STATE;
 
-static KB_STATE gKbState;
+    BOOLEAN     Extended;
+} KB_CONTEXT, *PKB_CONTEXT;
+
+#include "kbdcodes.h"
+
+static KB_CONTEXT gKbContext;
 
 
 //
@@ -272,7 +301,7 @@ KbResetSystem(
     KbCtrlSendCommand(CTRL_CMD_WRITE);
     _KbEncSendCommand(CTRL_CMD_SYSTEM_RESET);
 }
-
+static BOOLEAN ext = FALSE;
 
 VOID
 KbHandler(
@@ -284,7 +313,186 @@ KbHandler(
     UNREFERENCED_PARAMETER(Context);
 
     code = _KbEncReadBuffer();
-    Log("SCANCODE: 0x%02x\n", code);
+
+    // check for extended
+    if (scExt == code)
+    {
+        gKbContext.Extended = TRUE;
+    }
+    else
+    {
+        WORD keyCode;
+        BOOLEAN bIsBreak = (code & 0x80);
+        if (bIsBreak)
+        {
+            code -= 0x80;
+        }
+
+        // check LEDs (one press enables the mode, second press disables it)
+        if (scCaps == code && bIsBreak)
+        {
+            gKbContext.CapsLock = !gKbContext.CapsLock;
+            KbUpdateLeds(gKbContext.ScrollLock, gKbContext.NumLock, gKbContext.CapsLock);
+        }
+        else if (scNum == code && bIsBreak)
+        {
+            gKbContext.NumLock = !gKbContext.NumLock;
+            KbUpdateLeds(gKbContext.ScrollLock, gKbContext.NumLock, gKbContext.CapsLock);
+        }
+        else if (scScroll == code && bIsBreak)
+        {
+            gKbContext.ScrollLock = !gKbContext.ScrollLock;
+            KbUpdateLeds(gKbContext.ScrollLock, gKbContext.NumLock, gKbContext.CapsLock);
+        }
+        // check ctrl
+        else if (scLCtrl == code)
+        {
+            gKbContext.Ctrl = !bIsBreak;
+        }
+        else if (gKbContext.Extended && scExtRCtrl == code)
+        {
+            gKbContext.Ctrl = !bIsBreak;
+        }
+        // check shift
+        else if (scLShift == code)
+        {
+            gKbContext.Shift = !bIsBreak;
+        }
+        else if (scRShift == code)
+        {
+            gKbContext.Shift = !bIsBreak;
+        }
+        // check alt
+        else if (scLAlt == code)
+        {
+            gKbContext.Alt = !bIsBreak;
+        }
+        else if (gKbContext.Extended && scExtRAlt == code)
+        {
+            gKbContext.Alt = !bIsBreak;
+        }
+
+        // update the current mode
+        if (gKbContext.Shift && gKbContext.CapsLock)
+        {
+            gKbContext.State = kbStateShiftCaps;
+        }
+        else if (gKbContext.Shift && gKbContext.Ctrl)
+        {
+            gKbContext.State = kbStateShiftCtrl;
+        }
+        else if (gKbContext.Shift && gKbContext.NumLock)
+        {
+            gKbContext.State = kbStateShiftNum;
+        }
+        else if (gKbContext.Shift)
+        {
+            gKbContext.State = kbStateShiftHeld;
+        }
+        else if (gKbContext.Ctrl)
+        {
+            gKbContext.State = kbStateCtrlHeld;
+        }
+        else if (gKbContext.Alt)
+        {
+            gKbContext.State = kbStateAltHeld;
+        }
+        //else if (gKbContext.Alt)
+        //{
+        //    gKbContext.State = kbStateAltGr;
+        //}
+        else if (gKbContext.CapsLock)
+        {
+            gKbContext.State = kbStateCapsLock;
+        }
+        else if (gKbContext.NumLock)
+        {
+            gKbContext.State = kbStateNumLock;
+        }
+        else if (!gKbContext.Alt && !gKbContext.CapsLock && !gKbContext.Ctrl && !gKbContext.NumLock && !gKbContext.Shift)
+        {
+            gKbContext.State = kbStateNormal;
+        }
+
+        keyCode = gKbContext.Extended ? gKbdExtCodes[code][gKbContext.State] : gKbdUsCodes[code][gKbContext.State];
+        //gKbContext.Extended = FALSE;
+
+        {
+            const PCHAR s2t[] =
+            {
+                "kbStateNormal",
+                "kbStateShiftHeld",
+                "kbStateCtrlHeld",
+                "kbStateAltHeld",
+                "kbStateNumLock",
+                "kbStateCapsLock",
+                "kbStateShiftCaps",
+                "kbStateShiftNum",
+                "kbStateAltGr",
+                "kbStateShiftCtrl",
+                "kbStateCount",
+            };
+            BOOLEAN bNonAscii = gKbContext.Extended ? IsSpecialExtKey(code) : IsSpecialKey(code);
+
+            if (bNonAscii)
+            {
+                Log("[%d] [0x%02x][%s] -> %s\n", gKbContext.Extended, code, s2t[gKbContext.State],
+                    gKbContext.Extended ? SpecialExtKeyToText(code) : SpecialKeyToText(code));
+            }
+            else
+            {
+                Log("[%d] [0x%02x][%s] -> %c\n", gKbContext.Extended, code, s2t[gKbContext.State], (CHAR)(keyCode & 0xFF));
+            }
+        }
+        gKbContext.Extended = FALSE;
+    }
+
+    //Log("SCANCODE: 0x%02x 0x%04x %c\n", code, gKbdUsCodes[code][0], gKbdUsCodes[code][0] & 0xFF);
+    //if (0xE0 == code)
+    //{
+    //    ext = TRUE;
+    //}
+    //else
+    //{
+    //    BYTE t = (0 != (0x80 & code) ? (code - 0x80) : code);
+    //    BOOLEAN bNonAscii = ext ? IsSpecialExtKey(code) : IsSpecialKey(code);
+
+    //    if (!bNonAscii)
+    //    {
+    //        WORD k = ext ? gKbdExtCodes[t][0] : gKbdUsCodes[t][0];
+
+    //        if (k > 0xFF)
+    //        {
+    //            Log("0x%02x -> 0x%04x = %c %c\n", code, k, k & 0xFF, (k >> 8) & 0xFF);
+    //        }
+    //        else
+    //        {
+    //            Log("0x%02x -> 0x%04x = %c\n", code, k, k & 0xFF);
+    //        }
+    //    }
+    //    else
+    //    {
+    //        PCHAR k = ext ? SpecialExtKeyToText(code) : SpecialKeyToText(code);
+
+    //        Log("0x%02x -> %s\n", code, k);
+    //    }
+
+    //    //if (code < 0x80)
+    //    //{
+    //    //    WORD k = ext ? gKbdExtCodes[code][0] : gKbdUsCodes[code][0];
+
+    //    //    if (k > 0xFF)
+    //    //    {
+    //    //        Log("0x%02x -> 0x%04x = %c %c\n", code, k, k & 0xFF, (k >> 8) & 0xFF);
+    //    //    }
+    //    //    else
+    //    //    {
+    //    //        Log("0x%02x -> 0x%04x = %c\n", code, k, k & 0xFF);
+    //    //    }
+    //    //}
+    //    
+    //    ext = FALSE;
+    //}
 }
 
 
@@ -326,16 +534,20 @@ KbInit(
         return STATUS_INTERNAL_ERROR;
     }
 
-    gKbState.Alt = gKbState.Ctrl = gKbState.Shift = FALSE;
-    gKbState.NumLock = gKbState.ScrollLock = gKbState.CapsLock = FALSE;
-    gKbState.BatFailed = gKbState.DiagnosticFailed = gKbState.Error = gKbState.ResendRequested = FALSE;
-    gKbState.Enabled = TRUE;
-    gKbState.ScanCode = 0;
+    gKbContext.State = kbStateNormal;
+    gKbContext.ScrollLock = gKbContext.NumLock = gKbContext.CapsLock = FALSE;
+    gKbContext.Ctrl = FALSE;
+    gKbContext.Shift = FALSE;
+    gKbContext.Alt = FALSE;
+    gKbContext.BatFailed = gKbContext.DiagnosticFailed = gKbContext.Error = gKbContext.ResendRequested = FALSE;
+    gKbContext.Enabled = TRUE;
+    gKbContext.ScanCode = 0;
+    gKbContext.Extended = FALSE;
 
     // play with the LEDs so the keyboard will know who is its new master!
     KbUpdateLeds(FALSE, FALSE, FALSE);
     KbUpdateLeds(TRUE, TRUE, TRUE);
-    KbUpdateLeds(gKbState.ScrollLock, gKbState.NumLock, gKbState.CapsLock);
+    KbUpdateLeds(gKbContext.ScrollLock, gKbContext.NumLock, gKbContext.CapsLock);
 
     // get the Keyboard ID
     _KbEncSendCommandAndGetResponse(ENC_CMD_KB_ID);

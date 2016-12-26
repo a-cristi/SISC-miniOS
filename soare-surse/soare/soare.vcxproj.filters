@@ -208,6 +208,9 @@
     <ClInclude Include="keyboard.h">
       <Filter>Header Files\kernel</Filter>
     </ClInclude>
+    <ClInclude Include="kbdcodes.h">
+      <Filter>Header Files\kernel</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="postbuild.cmd">
