@@ -66,10 +66,16 @@ _VgaSetCursorPosition(
         _VgaScroll();
         gScreen.CurrentRow--;
     }
+
+    if (gScreen.CurrentRow < gScreen.StartRow)
+    {
+        gScreen.CurrentRow = gScreen.StartRow;
+    }
 }
 
 
 #define VGA_INCREMENT       _VgaSetCursorPosition(gScreen.CurrentRow, gScreen.CurrentColumn + 1)
+#define VGA_DECREMENT       _VgaSetCursorPosition(gScreen.CurrentColumn == 0 ? gScreen.CurrentRow - 1 : gScreen.CurrentRow, gScreen.CurrentColumn == 0 ? VGA_COLUMNS - 1 : gScreen.CurrentColumn - 1)
 
 
 VOID
@@ -120,8 +126,10 @@ VgaPutChar(
 
 
 #define CH_NEW_LINE     '\n'
+#define CH_RET          '\r'
 #define CH_TAB          '\t'
 #define CH_NULL         '\0'
+#define CH_BACKSPACE    '\b'
 
 
 VOID
@@ -136,11 +144,23 @@ VgaPutString(
         switch (Str[index])
         {
         case CH_NEW_LINE:
+        case CH_RET:
             _VgaSetCursorPosition(gScreen.CurrentRow + 1, 0);
             break;
 
         case CH_TAB:
             VgaPutString("    ");
+            break;
+
+        case CH_BACKSPACE:
+            /// TODO: in order to correctly handle backspace when the cursor is at the start of a new row we will have 
+            /// to remember where we have written the last character on each row
+            if (gScreen.CurrentColumn != 0)
+            {
+                VGA_DECREMENT;
+                VgaPutChar(' ');
+                VGA_DECREMENT;
+            }
             break;
 
         default:

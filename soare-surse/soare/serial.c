@@ -6,6 +6,7 @@
 #define CARRIAGE_RETURN     '\r'
 #define TAB                 '\t'
 #define NULL_TERMINATOR     '\0'
+#define BACKSPACE           '\b'
 
 typedef struct _COM_PORT
 {
@@ -178,6 +179,10 @@ SerialPutStringToPort(
             
         case NULL_TERMINATOR:
             return;
+
+            // ignore backspaces
+        case BACKSPACE:
+            continue;
 
         default:
             SerialWritePort(PortAddress, Str[index]);
