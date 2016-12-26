@@ -422,24 +422,6 @@ KbHandler(
             {
                 Log("%c", key);
             }
-            else if (gKbContext.NumLock)
-            {
-                switch (code)
-                {
-                case scKp7: Log("7"); break;
-                case scKp8: Log("8"); break;
-                case scKp9: Log("9"); break;
-                case scKp4: Log("4"); break;
-                case scKp5: Log("5"); break;
-                case scKp6: Log("6"); break;
-                case scKp1: Log("1"); break;
-                case scKp2: Log("2"); break;
-                case scKp3: Log("3"); break;
-                case scKp0: Log("0"); break;
-                case scKpDot: Log("."); break;
-                default: break;
-                }
-            }
             else
             {
                 LogWithInfo("[KB] Unknown or unprintable scan code 0x%02x in mode %d (extended: %d)\n",
