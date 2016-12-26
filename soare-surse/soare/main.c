@@ -138,7 +138,12 @@ void EntryPoint(
         PANIC("Failed to initilize the keyboard!");
     }
     Log(" Done!\n");
-    while (TRUE);
+    while (TRUE)
+    {
+        CHAR c;
+        c = KbGetCh();
+        Log("%c", c);
+    }
     DbgBreak();
     __halt();
 }

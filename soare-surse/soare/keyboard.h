@@ -6,4 +6,9 @@ KbInit(
     VOID
 );
 
+CHAR
+KbGetCh(
+    VOID
+);
+
 #endif // !_KEYBOARD_H_

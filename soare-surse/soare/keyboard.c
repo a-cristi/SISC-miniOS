@@ -152,8 +152,6 @@ typedef enum _KB_STATE
 typedef struct _KB_CONTEXT
 {
     BOOLEAN     Enabled;
-
-    BYTE        ScanCode;
     
     // state
     KB_STATE    State;
@@ -179,7 +177,7 @@ typedef struct _KB_CONTEXT
     
     BOOLEAN     ResendRequested;
 
-    BOOLEAN     Extended;
+    BOOLEAN     Extended;    
 } KB_CONTEXT, *PKB_CONTEXT;
 
 #include "kbdcodes.h"
@@ -301,7 +299,7 @@ KbResetSystem(
     KbCtrlSendCommand(CTRL_CMD_WRITE);
     _KbEncSendCommand(CTRL_CMD_SYSTEM_RESET);
 }
-static BOOLEAN ext = FALSE;
+
 
 VOID
 KbHandler(
@@ -321,7 +319,6 @@ KbHandler(
     }
     else
     {
-        WORD keyCode;
         BOOLEAN bIsBreak = (code & 0x80);
         if (bIsBreak)
         {
@@ -414,85 +411,44 @@ KbHandler(
             gKbContext.State = kbStateNormal;
         }
 
-        keyCode = gKbContext.Extended ? gKbdExtCodes[code][gKbContext.State] : gKbdUsCodes[code][gKbContext.State];
-        //gKbContext.Extended = FALSE;
-
+        if (!bIsBreak)
         {
-            const PCHAR s2t[] =
-            {
-                "kbStateNormal",
-                "kbStateShiftHeld",
-                "kbStateCtrlHeld",
-                "kbStateAltHeld",
-                "kbStateNumLock",
-                "kbStateCapsLock",
-                "kbStateShiftCaps",
-                "kbStateShiftNum",
-                "kbStateAltGr",
-                "kbStateShiftCtrl",
-                "kbStateCount",
-            };
-            BOOLEAN bNonAscii = gKbContext.Extended ? IsSpecialExtKey(code) : IsSpecialKey(code);
+            CHAR key = gKbContext.Extended ? (gKbdExtCodes[code][gKbContext.State] & 0xFF) :
+                (gKbdUsCodes[code][gKbContext.State] & 0xFF);
 
-            if (bNonAscii)
+#define IsPrintable(c)      (((' ' <= (c)) && ((c) <= '~')) || ('\n' == (c)) || ('\r' == (c)) || ('\t' == (c)) || ('\b' == (c)))
+
+            if (IsPrintable(key))
             {
-                Log("[%d] [0x%02x][%s] -> %s\n", gKbContext.Extended, code, s2t[gKbContext.State],
-                    gKbContext.Extended ? SpecialExtKeyToText(code) : SpecialKeyToText(code));
+                Log("%c", key);
+            }
+            else if (gKbContext.NumLock)
+            {
+                switch (code)
+                {
+                case scKp7: Log("7"); break;
+                case scKp8: Log("8"); break;
+                case scKp9: Log("9"); break;
+                case scKp4: Log("4"); break;
+                case scKp5: Log("5"); break;
+                case scKp6: Log("6"); break;
+                case scKp1: Log("1"); break;
+                case scKp2: Log("2"); break;
+                case scKp3: Log("3"); break;
+                case scKp0: Log("0"); break;
+                case scKpDot: Log("."); break;
+                default: break;
+                }
             }
             else
             {
-                Log("[%d] [0x%02x][%s] -> %c\n", gKbContext.Extended, code, s2t[gKbContext.State], (CHAR)(keyCode & 0xFF));
+                LogWithInfo("[KB] Unknown or unprintable scan code 0x%02x in mode %d (extended: %d)\n",
+                    code, gKbContext.State, gKbContext.Extended);
             }
         }
+
         gKbContext.Extended = FALSE;
     }
-
-    //Log("SCANCODE: 0x%02x 0x%04x %c\n", code, gKbdUsCodes[code][0], gKbdUsCodes[code][0] & 0xFF);
-    //if (0xE0 == code)
-    //{
-    //    ext = TRUE;
-    //}
-    //else
-    //{
-    //    BYTE t = (0 != (0x80 & code) ? (code - 0x80) : code);
-    //    BOOLEAN bNonAscii = ext ? IsSpecialExtKey(code) : IsSpecialKey(code);
-
-    //    if (!bNonAscii)
-    //    {
-    //        WORD k = ext ? gKbdExtCodes[t][0] : gKbdUsCodes[t][0];
-
-    //        if (k > 0xFF)
-    //        {
-    //            Log("0x%02x -> 0x%04x = %c %c\n", code, k, k & 0xFF, (k >> 8) & 0xFF);
-    //        }
-    //        else
-    //        {
-    //            Log("0x%02x -> 0x%04x = %c\n", code, k, k & 0xFF);
-    //        }
-    //    }
-    //    else
-    //    {
-    //        PCHAR k = ext ? SpecialExtKeyToText(code) : SpecialKeyToText(code);
-
-    //        Log("0x%02x -> %s\n", code, k);
-    //    }
-
-    //    //if (code < 0x80)
-    //    //{
-    //    //    WORD k = ext ? gKbdExtCodes[code][0] : gKbdUsCodes[code][0];
-
-    //    //    if (k > 0xFF)
-    //    //    {
-    //    //        Log("0x%02x -> 0x%04x = %c %c\n", code, k, k & 0xFF, (k >> 8) & 0xFF);
-    //    //    }
-    //    //    else
-    //    //    {
-    //    //        Log("0x%02x -> 0x%04x = %c\n", code, k, k & 0xFF);
-    //    //    }
-    //    //}
-    //    
-    //    ext = FALSE;
-    //}
 }
 
 
@@ -541,7 +497,6 @@ KbInit(
     gKbContext.Alt = FALSE;
     gKbContext.BatFailed = gKbContext.DiagnosticFailed = gKbContext.Error = gKbContext.ResendRequested = FALSE;
     gKbContext.Enabled = TRUE;
-    gKbContext.ScanCode = 0;
     gKbContext.Extended = FALSE;
 
     // play with the LEDs so the keyboard will know who is its new master!
@@ -557,4 +512,14 @@ KbInit(
     PicEnableIrq(PIC_IRQ_KEYBOARD);
 
     return STATUS_SUCCESS;
+}
+
+
+CHAR
+KbGetCh(
+    VOID
+)
+{
+    while (TRUE);
+    return 0;
 }
