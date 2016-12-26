@@ -158,19 +158,19 @@ typedef struct _KB_CONTEXT
     // state
     KB_STATE    State;
 
-    // easier manipulation for LEDs
-    BOOLEAN     ScrollLock;
-    BOOLEAN     NumLock;
-    BOOLEAN     CapsLock;
+    // easier manipulation for special keys
+    struct  
+    {
+        BYTE    ScrollLock : 1;
+        BYTE    NumLock : 1;
+        BYTE    CapsLock : 1;
 
-    // ctrl keys
-    BOOLEAN     Ctrl;
+        BYTE    Ctrl : 1;
+        BYTE    Shift : 1;
+        BYTE    Alt : 1;
 
-    // shift keys
-    BOOLEAN     Shift;
-
-    // alt keys
-    BOOLEAN     Alt;
+        BYTE    _reserved : 2;
+    };
 
     BOOLEAN     Error;
 
