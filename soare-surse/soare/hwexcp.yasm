@@ -597,8 +597,6 @@ IsrHndSpurious:
 extern PitHandler
 global IsrHndPic
 
-exter
-
 IsrHndPic:
     BEGIN_IRQ
     GENERATE_TRAP_FRAME "e"
@@ -612,3 +610,24 @@ IsrHndPic:
 
     RESTORE_CONTEXT_FROM_TRAP_FRAME
     END_IRQ
+
+
+;;
+;; Keyboard IRQ
+;;
+extern KbHandler
+global IsrHndKeyboard
+
+IsrHndKeyboard:
+	BEGIN_IRQ
+	GENERATE_TRAP_FRAME "e"
+
+    mov     QWORD [rbp + TRAP_FRAME.ExceptionCode], 0
+
+    mov     rcx, rbp
+    sub     rsp, 4 * 8
+    call    KbHandler
+    add     rsp, 4 * 8
+
+	RESTORE_CONTEXT_FROM_TRAP_FRAME
+	END_IRQ

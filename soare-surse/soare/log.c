@@ -50,7 +50,7 @@ KLogWithInfo(
     len = rpl_vsnprintf(buf, KLOG_MAX_CHARS - 1, Format, ap);
     va_end(ap);
 
-    len = KLog(LOG_MEDIUM_DEFAULT, "[%d.%06d] %s:%d\t%s", 
+    len = KLog(LOG_MEDIUM_DEFAULT, "[%06d.%06d] %s:%d\t%s", 
         __rdtsc() / tscDiv, __rdtsc() % tscDiv, File, Line, buf);
 
     return len;

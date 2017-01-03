@@ -117,27 +117,27 @@ DtrInitAndLoadAll(
     LogWithInfo("[%d] Done!\n", Cpu->ApicId);
 
     // Load Selectors
-    LogWithInfo("[%d] Loading CS...", Cpu->ApicId);
+    LogWithInfo("[%d] Loading CS...\n", Cpu->ApicId);
     HwLoadCs(GDT_KCODE64_SELECTOR);
     LogWithInfo("[%d] Done!\n", Cpu->ApicId);
 
-    LogWithInfo("[%d] Loading DS...", Cpu->ApicId);
+    LogWithInfo("[%d] Loading DS...\n", Cpu->ApicId);
     HwLoadDs(GDT_KDATA64_SELECTOR);
     LogWithInfo("[%d] Done!\n", Cpu->ApicId);
     
-    LogWithInfo("[%d] Loading ES...", Cpu->ApicId);
+    LogWithInfo("[%d] Loading ES...\n", Cpu->ApicId);
     HwLoadEs(GDT_KDATA64_SELECTOR);
     LogWithInfo("[%d] Done!\n", Cpu->ApicId);
 
-    LogWithInfo("[%d] Loading FS...", Cpu->ApicId);
+    LogWithInfo("[%d] Loading FS...\n", Cpu->ApicId);
     HwLoadFs(GDT_KDATA64_SELECTOR);
     LogWithInfo("[%d] Done!\n", Cpu->ApicId);
 
-    LogWithInfo("[%d] Loading GS...", Cpu->ApicId);
+    LogWithInfo("[%d] Loading GS...\n", Cpu->ApicId);
     HwLoadGs(GDT_KDATA64_SELECTOR);
     LogWithInfo("[%d] Done!\n", Cpu->ApicId);
 
-    LogWithInfo("[%d] Loading SS...", Cpu->ApicId);
+    LogWithInfo("[%d] Loading SS...\n", Cpu->ApicId);
     HwLoadSs(GDT_KDATA64_SELECTOR);
     LogWithInfo("[%d] Done!\n", Cpu->ApicId);
 
@@ -197,7 +197,7 @@ DtrInstallIrqHandler(
 
     pGate->Selector = GDT_KCODE64_SELECTOR;
     pGate->Fields = 0x8E00;
-    LogWithInfo("DPL %d IST %d P: %d S %d Tpe: 0x%04x", pGate->DPL, pGate->Ist, pGate->P, pGate->S, pGate->Type);
+    LogWithInfo("DPL %d IST %d P: %d S %d Tpe: 0x%04x\n", pGate->DPL, pGate->Ist, pGate->P, pGate->S, pGate->Type);
     __lidt(&pCpu->Idtr);
 
     return STATUS_SUCCESS;
