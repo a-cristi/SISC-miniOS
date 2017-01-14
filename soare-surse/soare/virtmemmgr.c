@@ -4,6 +4,7 @@
 #include "mem.h"
 #include "log.h"
 #include "physmemmgr.h"
+#include "virtmemmgr.h"
 #include "kpool.h"
 #include "debugger.h"
 
@@ -35,6 +36,9 @@ static_assert(0xffffff8000000000 == VAS_VMGR_PT, "Unexpected PT");
 #define VAS_LOWMEM              (0ULL)
 #define VAS_STACK               (ONE_TB * 2)
 #define VAS_POOL                (ONE_TB * 3)
+#define VAS_POOL_SIZE           (32 * ONE_MB)
+#define VAS_ONDEMAND            (ONE_TB * 4)
+#define VAS_ONDEMAND_SIZE       (4 * ONE_MB)
 
 typedef QWORD       PTE, *PPTE;
 
@@ -245,7 +249,8 @@ _MmPreAllocVas(
     _In_opt_ PCHAR Name,
     _In_ QWORD Base,
     _In_ DWORD Length,
-    _In_ WORD Attributes
+    _In_ WORD Attributes,
+    _In_ BOOLEAN Empty
 )
 {
     DWORD pteCount = SMALL_PAGE_COUNT(Length);
@@ -316,14 +321,21 @@ _MmPreAllocVas(
         }
         else
         {
-            QWORD pa = 0;
-            NTSTATUS status = MmAllocPhysicalPage(&pa);
-            if (!NT_SUCCESS(status))
+            if (!Empty)
             {
-                return status;
-            }
+                QWORD pa = 0;
+                NTSTATUS status = MmAllocPhysicalPage(&pa);
+                if (!NT_SUCCESS(status))
+                {
+                    return status;
+                }
 
-            pPt->Entries[PT_INDEX(nextVa)] = CLEAN_PHYADDR(pa) | Attributes | PTE_P;
+                pPt->Entries[PT_INDEX(nextVa)] = CLEAN_PHYADDR(pa) | Attributes | PTE_P;
+            }
+            else
+            {
+                pPt->Entries[PT_INDEX(nextVa)] = 0ULL;
+            }
         }
 
         nextVa += PAGE_SIZE_4K;
@@ -690,10 +702,17 @@ MmVirtualManagerInit(
     Log("Magic: %018p\n", magic);
 
     // init all the VAS
-    status = _MmPreAllocVas("POOL", VAS_POOL, 32 * ONE_MB, PTE_P | PTE_RW | PTE_US);
+    status = _MmPreAllocVas("POOL", VAS_POOL, VAS_POOL_SIZE, PTE_P | PTE_RW | PTE_US, FALSE);
     if (!NT_SUCCESS(status))
     {
-        LogWithInfo("[ERROR] _MmInitVas failed for %018p: 0x%08x\n", VAS_POOL, status);
+        LogWithInfo("[ERROR] _MmPreAllocVas failed for %018p: 0x%08x\n", VAS_POOL, status);
+        return status;
+    }
+
+    status = _MmPreAllocVas("ONDEMAND", VAS_ONDEMAND, VAS_ONDEMAND_SIZE, PTE_P | PTE_RW | PTE_US, TRUE);
+    if (!NT_SUCCESS(status))
+    {
+        LogWithInfo("[ERROR] _MmPreAllocVas failed for %018p: 0x%08x\n", VAS_ONDEMAND, status);
         return status;
     }
 
@@ -860,3 +879,206 @@ _MmGetFirstFreePteInVas(
     return STATUS_NOT_FOUND;
 }
 
+
+static
+NTSTATUS
+_MmGetFreeRangeInVas(
+    _In_ QWORD VasBase,
+    _In_ QWORD VasLength,
+    _In_ DWORD RangeLength,
+    _Out_ QWORD *FirstFreeVa
+)
+{
+    QWORD vasPages = SMALL_PAGE_COUNT(VasLength);
+    QWORD neededPages = SMALL_PAGE_COUNT(RangeLength);
+    QWORD pagesLeft = neededPages;
+    QWORD va = VasBase;
+    QWORD start = 0;
+
+    for (QWORD p = 0; p < vasPages && 0 != pagesLeft; p++)
+    {
+        PPT pTable;
+        PTE pte;
+
+        // check PML4E
+        pTable = (PT *)VA2PML4(va);
+        pte = pTable->Entries[PML4_INDEX(va)];
+        if (0 == (pte & PTE_P))
+        {
+            pagesLeft = neededPages;
+            start = 0;
+            goto _next;
+        }
+
+        // check PDPE
+        pTable = (PT *)VA2PDP(va);
+        pte = pTable->Entries[PDP_INDEX(va)];
+        if (0 == (pte & PTE_P))
+        {
+            pagesLeft = neededPages;
+            start = 0;
+            goto _next;
+        }
+
+        // check PDE
+        pTable = (PT *)VA2PD(va);
+        pte = pTable->Entries[PD_INDEX(va)];
+        if (0 == (pte & PTE_P))
+        {
+            pagesLeft = neededPages;
+            start = 0;
+            goto _next;
+        }
+
+        // check PTE
+        pTable = (PT *)VA2PT(va);
+        pte = pTable->Entries[PT_INDEX(va)];
+        if (0 == (pte & PTE_P))
+        {
+            if (!start)
+            {
+                start = va;
+            }
+            pagesLeft--;
+        }
+
+    _next:
+        va += PAGE_SIZE_4K;
+    }
+
+    if (!pagesLeft && va)
+    {
+        *FirstFreeVa = va;
+        return STATUS_SUCCESS;
+    }
+
+    return STATUS_NOT_FOUND;
+}
+
+
+
+NTSTATUS
+MmMapPhysicalPages(
+    _In_ QWORD PhysicalBase,
+    _In_ DWORD RangeSize,
+    _Out_ PVOID *Ptr,
+    _In_ DWORD Flags
+)
+{
+    NTSTATUS status;
+    QWORD vaStart = 0;
+    DWORD rangeSize = ROUND_UP(RangeSize, PAGE_SIZE_4K);
+
+    if (!Ptr)
+    {
+        return STATUS_INVALID_PARAMETER_3;
+    }
+
+    if (0 == (MAP_FLG_SKIP_PHYPAGE_CHECK & Flags))
+    {
+        status = MmReservePhysicalRange(PhysicalBase, rangeSize);
+        if (!NT_SUCCESS(status))
+        {
+            LogWithInfo("[ERROR] MmReservePhysicalRange failed for [%018p, %18p): 0x%08x\n", 
+                PhysicalBase, PhysicalBase + rangeSize, status);
+            return status;
+        }
+    }
+
+    status = _MmGetFreeRangeInVas(VAS_ONDEMAND, VAS_ONDEMAND_SIZE, rangeSize, &vaStart);
+    if (!NT_SUCCESS(status))
+    {
+        LogWithInfo("[ERROR] _MmGetFreeRangeInVas failed: 0x%08x\n", status);
+        goto _cleanup_and_exit;
+    }
+
+    status = MmMapContigousPhysicalRegion(PhysicalBase, vaStart, rangeSize);
+    if (!NT_SUCCESS(status))
+    {
+        LogWithInfo("[ERROR] MmMapContigousPhysicalRegion failed for [%018p, %018p) -> [%018p, %018p): 0x%08x\n",
+            PhysicalBase, PhysicalBase + rangeSize, vaStart, vaStart + rangeSize, status);
+        goto _cleanup_and_exit;
+    }
+
+    status = STATUS_SUCCESS;
+    *Ptr = (VOID *)vaStart;
+
+_cleanup_and_exit:
+    if (!NT_SUCCESS(status))
+    {
+        if (0 == (MAP_FLG_SKIP_PHYPAGE_CHECK & Flags))
+        {
+            for (QWORD i = 0; i < rangeSize; i += PAGE_SIZE_4K)
+            {
+                MmFreePhysicalPage(i + PhysicalBase);
+            }
+        }
+    }
+
+    return status;
+}
+
+
+NTSTATUS
+MmUnmapRangeAndNull(
+    _Inout_ PVOID *Ptr,
+    _In_ DWORD Length,
+    _In_ DWORD Flags
+)
+{
+    QWORD pages;
+
+    if (!Ptr || !*Ptr)
+    {
+        return STATUS_INVALID_PARAMETER_1;
+    }
+
+    Length = ROUND_UP(Length, PAGE_SIZE_4K);
+    pages = SMALL_PAGE_COUNT(Length);
+
+    for (QWORD p = 0; p < pages; p++)
+    {
+        QWORD va = (QWORD)(*Ptr) + p * PAGE_SIZE_4K;
+        PPT pPt = (PT *)VA2PT(va);
+        WORD idx = PT_INDEX(va);
+
+        if (0 == (MAP_FLG_SKIP_PHYPAGE_CHECK & Flags))
+        {
+            QWORD pa = CLEAN_PHYADDR(pPt->Entries[idx]);
+            MmFreePhysicalPage(pa);
+        }
+
+        pPt->Entries[idx] = 0ULL;
+
+        __invlpg(va);
+    }
+
+    return STATUS_SUCCESS;
+}
+
+
+VOID
+MmDumpVas(
+    _In_ QWORD VaBase,
+    _In_ QWORD Length
+)
+{
+    QWORD pages = SMALL_PAGE_COUNT(Length);
+
+    for (QWORD p = 0; p < pages; p++)
+    {
+        QWORD va = VaBase + p * PAGE_SIZE_4K;
+        PPT pPml4 = (PT *)VA2PML4(va);
+        PPT pPdp = (PT *)VA2PDP(va);
+        PPT pPd = (PT *)VA2PD(va);
+        PPT pPt = (PT *)VA2PT(va);
+
+        LogWithInfo("VA %018p -> PXE @ %018p, PDP @ %018p, PD @ %018p, PT @ %018p\n",
+            va, pPml4, pPdp, pPd, pPt);
+        LogWithInfo("\t\t PXE[%d] = %018p, PDP[%d] = %018p, PD[%d] = %018p, PT[%d] = %018p\n",
+            PML4_INDEX(va), pPml4->Entries[PML4_INDEX(va)], 
+            PDP_INDEX(va), pPdp->Entries[PDP_INDEX(va)],
+            PD_INDEX(va), pPd->Entries[PD_INDEX(va)], 
+            PT_INDEX(va), pPt->Entries[PT_INDEX(va)]);
+    }
+}
