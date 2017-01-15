@@ -32,4 +32,9 @@ AcpiFindRootPointer(
     _Out_ QWORD *TableAddress
 );
 
+VOID
+AcpiDumpRsdp(
+    _In_ PRSDP_TABLE Rsdp
+);
+
 #endif // !_ACPITABLES_H_

@@ -151,6 +151,17 @@ void EntryPoint(
         {
             Log("RSDP @ %018p\n", rsdpPa);
         }
+        PRSDP_TABLE pRsdp = NULL;
+        status = MmMapPhysicalPages(rsdpPa, sizeof(RSDP_TABLE), &pRsdp, MAP_FLG_SKIP_PHYPAGE_CHECK);
+        if (!NT_SUCCESS(status))
+        {
+            LogWithInfo("[ERROR] MmMapPhysicalPages failed for %018p: 0x%08x\n", rsdpPa, status);
+        }
+        else
+        {
+            AcpiDumpRsdp(pRsdp);
+            MmUnmapRangeAndNull(&pRsdp, sizeof(RSDP_TABLE), MAP_FLG_SKIP_PHYPAGE_CHECK);
+        }
     }
 
     while (TRUE)

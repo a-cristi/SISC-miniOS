@@ -139,8 +139,7 @@ AcpiFindRootPointer(
         return status;
     }
 
-    pIterator = AcpiSearchRsdp(pTable, RSDP_RANGE);
-    
+    pIterator = AcpiSearchRsdp(pTable, RSDP_RANGE);    
     MmUnmapRangeAndNull(&pTable, RSDP_RANGE, MAP_FLG_SKIP_PHYPAGE_CHECK);
 
     if (pIterator)
@@ -152,4 +151,30 @@ AcpiFindRootPointer(
     }
 
     return STATUS_NOT_FOUND;
+}
+
+VOID
+AcpiDumpRsdp(
+    _In_ PRSDP_TABLE Rsdp
+)
+{
+    if (Rsdp)
+    {
+        CHAR signature[9] = { 0 };
+        CHAR oemId[ACPI_OEM_ID_SIZE + 1] = { 0 };
+
+        memcpy(signature, Rsdp->Signature, 8 * sizeof(CHAR));
+        memcpy(oemId, Rsdp->OemId, ACPI_OEM_ID_SIZE);
+
+        Log("[ACPI] RSDP: \n");
+        Log("\t\t Signature: %s\n", signature);
+        Log("\t\t Checksum:  0x%x\n", Rsdp->Checksum);
+        Log("\t\t Oem ID:    %s\n", Rsdp->OemId);
+        Log("\t\t Revision:  %d - %s\n", Rsdp->Revision,
+            0 == Rsdp->Revision ? "ACPI 1.0" : 2 <= Rsdp->Revision ? "ACPI 2.0+" : "Unknown");
+        Log("\t\t RSDT PA:   0x%x\n", Rsdp->RsdtPhysicalAddress);
+        Log("\t\t Length:    0x%x\n", Rsdp->Length);
+        Log("\t\t XSDT PA:   %p\n", Rsdp->XsdtPhysicalAddress);
+        Log("\t\t ExChkSum:  0x%x\n", Rsdp->ExtendedChecksum);
+    }
 }
