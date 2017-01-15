@@ -18,6 +18,7 @@
 #include "debugger.h"
 #include "buildinfo.h"
 #include "keyboard.h"
+#include "acpitables.h"
 
 extern KGLOBAL gKernelGlobalData;
 
@@ -138,6 +139,20 @@ void EntryPoint(
         PANIC("Failed to initilize the keyboard!");
     }
     Log(" Done!\n");
+
+    {
+        QWORD rsdpPa = 0;
+        status = AcpiFindRootPointer(&rsdpPa);
+        if (!NT_SUCCESS(status))
+        {
+            Log("[ERROR] AcpiFindRootPointer failed: 0x%08x\n", status);
+        }
+        else
+        {
+            Log("RSDP @ %018p\n", rsdpPa);
+        }
+    }
+
     while (TRUE)
     {
         CHAR c;
