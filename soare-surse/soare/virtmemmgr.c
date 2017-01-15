@@ -967,20 +967,24 @@ MmMapPhysicalPages(
 {
     NTSTATUS status;
     QWORD vaStart = 0;
-    DWORD rangeSize = ROUND_UP(RangeSize, PAGE_SIZE_4K);
+    QWORD startPa = ROUND_DOWN(PhysicalBase, PAGE_SIZE_4K);
+    DWORD rangeSize = (DWORD)(ROUND_UP(PhysicalBase + RangeSize, PAGE_SIZE_4K) - startPa);
 
     if (!Ptr)
     {
         return STATUS_INVALID_PARAMETER_3;
     }
 
+    LogWithInfo("[PAMAP] Requested [%018p, %018p), will get [%018p, %018p)\n",
+        PhysicalBase, PhysicalBase + RangeSize, startPa, startPa + rangeSize);
+
     if (0 == (MAP_FLG_SKIP_PHYPAGE_CHECK & Flags))
     {
-        status = MmReservePhysicalRange(PhysicalBase, rangeSize);
+        status = MmReservePhysicalRange(startPa, rangeSize);
         if (!NT_SUCCESS(status))
         {
             LogWithInfo("[ERROR] MmReservePhysicalRange failed for [%018p, %18p): 0x%08x\n", 
-                PhysicalBase, PhysicalBase + rangeSize, status);
+                startPa, startPa + rangeSize, status);
             return status;
         }
     }
@@ -992,7 +996,7 @@ MmMapPhysicalPages(
         goto _cleanup_and_exit;
     }
 
-    status = MmMapContigousPhysicalRegion(PhysicalBase, vaStart, rangeSize);
+    status = MmMapContigousPhysicalRegion(startPa, vaStart, rangeSize);
     if (!NT_SUCCESS(status))
     {
         LogWithInfo("[ERROR] MmMapContigousPhysicalRegion failed for [%018p, %018p) -> [%018p, %018p): 0x%08x\n",
@@ -1001,7 +1005,8 @@ MmMapPhysicalPages(
     }
 
     status = STATUS_SUCCESS;
-    *Ptr = (VOID *)vaStart;
+    *Ptr = (VOID *)(vaStart + (PhysicalBase - startPa));
+    LogWithInfo("[PAMAP] Returning %018p (%018p) for %018p (%018p)\n", *Ptr, vaStart, PhysicalBase, startPa);
 
 _cleanup_and_exit:
     if (!NT_SUCCESS(status))
@@ -1027,18 +1032,20 @@ MmUnmapRangeAndNull(
 )
 {
     QWORD pages;
+    QWORD qwPtr;
 
     if (!Ptr || !*Ptr)
     {
         return STATUS_INVALID_PARAMETER_1;
     }
 
-    Length = ROUND_UP(Length, PAGE_SIZE_4K);
+    qwPtr = ROUND_DOWN((QWORD)*Ptr, PAGE_SIZE_4K);
+    Length = (DWORD)(ROUND_UP((QWORD)*Ptr + Length, PAGE_SIZE_4K) - qwPtr);
     pages = SMALL_PAGE_COUNT(Length);
 
     for (QWORD p = 0; p < pages; p++)
     {
-        QWORD va = (QWORD)(*Ptr) + p * PAGE_SIZE_4K;
+        QWORD va = qwPtr + p * PAGE_SIZE_4K;
         PPT pPt = (PT *)VA2PT(va);
         WORD idx = PT_INDEX(va);
 
