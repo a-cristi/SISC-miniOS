@@ -1000,7 +1000,7 @@ MmMapPhysicalPages(
     if (!NT_SUCCESS(status))
     {
         LogWithInfo("[ERROR] MmMapContigousPhysicalRegion failed for [%018p, %018p) -> [%018p, %018p): 0x%08x\n",
-            PhysicalBase, PhysicalBase + rangeSize, vaStart, vaStart + rangeSize, status);
+            startPa, startPa + rangeSize, vaStart, vaStart + rangeSize, status);
         goto _cleanup_and_exit;
     }
 
@@ -1015,7 +1015,7 @@ _cleanup_and_exit:
         {
             for (QWORD i = 0; i < rangeSize; i += PAGE_SIZE_4K)
             {
-                MmFreePhysicalPage(i + PhysicalBase);
+                MmFreePhysicalPage(i + startPa);
             }
         }
     }
