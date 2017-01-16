@@ -946,9 +946,9 @@ _MmGetFreeRangeInVas(
         va += PAGE_SIZE_4K;
     }
 
-    if (!pagesLeft && va)
+    if (!pagesLeft && start)
     {
-        *FirstFreeVa = va;
+        *FirstFreeVa = start;
         return STATUS_SUCCESS;
     }
 
