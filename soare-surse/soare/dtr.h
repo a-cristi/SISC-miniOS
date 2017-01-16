@@ -116,8 +116,8 @@ typedef struct _GDT_LAYOUT
 typedef struct _PCPU
 {
     struct _PCPU *  Self;
-    DWORD           ApicId; // MADT.LocalApicId
-    DWORD           Number; // in initialization order
+    DWORD           ApicId;             // MADT.LocalApicId
+    DWORD           Number;             // in initialization order
     BOOLEAN         IsBsp;
     BYTE            _Padding[7];
 
@@ -133,8 +133,6 @@ typedef struct _PCPU
 } PCPU, *PPCPU;
 
 #pragma pack(pop)
-
-#define MAX_CPU_COUNT       16
 
 static_assert(sizeof(INTERRUPT_GATE) * IDT_ENTRIES <= 4096, "Invalid IDT size!");
 
@@ -182,5 +180,7 @@ DtrInstallIrqHandler(
 );
 
 #define GetCurrentCpu()         ((PPCPU)__readgsqword(FIELD_OFFSET(PCPU, Self)))
+
+#define MAX_CPU_COUNT           8
 
 #endif // !_DTR_H_

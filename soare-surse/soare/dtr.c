@@ -149,7 +149,14 @@ DtrInitAndLoadAll(
 }
 
 
-static PCPU gBsp;
+typedef struct _CPU_STATE
+{
+    PCPU        Cpus[MAX_CPU_COUNT];
+    BYTE        CpuCount;
+} CPU_STATE, *PCPU_STATE;
+
+static CPU_STATE gCpuState = { 0 };
+
 
 NTSTATUS
 DtrCreatePcpu(
@@ -161,8 +168,14 @@ DtrCreatePcpu(
         return STATUS_INVALID_PARAMETER_1;
     }
 
-    *Cpu = &gBsp;
-    return STATUS_SUCCESS;
+    if (gCpuState.CpuCount < MAX_CPU_COUNT)
+    {
+        *Cpu = &gCpuState.Cpus[gCpuState.CpuCount];
+        gCpuState.CpuCount++;
+        return STATUS_SUCCESS;
+    }
+
+    return STATUS_NO_MEMORY;
 }
 
 
