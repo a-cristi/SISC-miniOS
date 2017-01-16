@@ -148,18 +148,11 @@ DtrInitAndLoadAll(
     return STATUS_SUCCESS;
 }
 
-
-typedef struct _CPU_STATE
-{
-    PCPU        Cpus[MAX_CPU_COUNT];
-    BYTE        CpuCount;
-} CPU_STATE, *PCPU_STATE;
-
 static CPU_STATE gCpuState = { 0 };
 
 
 NTSTATUS
-DtrCreatePcpu(
+DtrAllocPcpu(
     _Out_ PPCPU *Cpu
 )
 {
@@ -170,12 +163,22 @@ DtrCreatePcpu(
 
     if (gCpuState.CpuCount < MAX_CPU_COUNT)
     {
+        LogWithInfo("[DTR] Allocating PCPU %d...\n", gCpuState.CpuCount);
         *Cpu = &gCpuState.Cpus[gCpuState.CpuCount];
         gCpuState.CpuCount++;
         return STATUS_SUCCESS;
     }
 
     return STATUS_NO_MEMORY;
+}
+
+
+PCPU_STATE
+DtrGetCpuState(
+    VOID
+)
+{
+    return &gCpuState;
 }
 
 
@@ -214,4 +217,25 @@ DtrInstallIrqHandler(
     __lidt(&pCpu->Idtr);
 
     return STATUS_SUCCESS;
+}
+
+
+DWORD
+CpuGetInitialApicId(
+    VOID
+)
+{
+    //
+    // Intel SDM 10.4.6 Local APIC ID: The value returned by bits 31 - 24 of the EBX register (when the CPUID 
+    // instruction is executed with a source operand value of 1 in the EAX register) is always the Initial APIC ID
+    // (determined by the platform initialization). This is true even if software has changed the value in the Local 
+    // APIC ID register.
+    //
+    DWORD registers[4] = { 0 };
+#define INITIAL_APIC_ID_MASK    0xFF000000
+#define INITIAL_APIC_ID_SHIFT   24
+
+    __cpuid(&registers, 1);
+
+    return ((registers[1] & INITIAL_APIC_ID_MASK) >> INITIAL_APIC_ID_SHIFT);
 }

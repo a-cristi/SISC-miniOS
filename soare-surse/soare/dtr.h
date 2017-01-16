@@ -164,7 +164,7 @@ DtrInitAndLoadAll(
 );
 
 NTSTATUS
-DtrCreatePcpu(
+DtrAllocPcpu(
     _Out_ PPCPU *Cpu
 );
 
@@ -182,5 +182,21 @@ DtrInstallIrqHandler(
 #define GetCurrentCpu()         ((PPCPU)__readgsqword(FIELD_OFFSET(PCPU, Self)))
 
 #define MAX_CPU_COUNT           8
+
+typedef struct _CPU_STATE
+{
+    PCPU        Cpus[MAX_CPU_COUNT];
+    BYTE        CpuCount;
+} CPU_STATE, *PCPU_STATE;
+
+PCPU_STATE
+DtrGetCpuState(
+    VOID
+);
+
+DWORD
+CpuGetInitialApicId(
+    VOID
+);
 
 #endif // !_DTR_H_

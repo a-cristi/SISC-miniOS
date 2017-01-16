@@ -125,6 +125,9 @@
     <ClCompile Include="acpitables.c">
       <Filter>Source Files\ACPI</Filter>
     </ClCompile>
+    <ClCompile Include="smp.c">
+      <Filter>Source Files\kernel</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="boot.h">
@@ -222,6 +225,9 @@
     </ClInclude>
     <ClInclude Include="acpitables.h">
       <Filter>Header Files\ACPI</Filter>
+    </ClInclude>
+    <ClInclude Include="msrdefs.h">
+      <Filter>Header Files\kernel</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

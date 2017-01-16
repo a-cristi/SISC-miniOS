@@ -100,7 +100,7 @@ void EntryPoint(
     }
 
     gKernelGlobalData.Phase = 2;    // memory manager initialized, BSP stack switched
-    status = DtrCreatePcpu(&pBsp);
+    status = DtrAllocPcpu(&pBsp);
     if (!NT_SUCCESS(status))
     {
         LogWithInfo("[FATAL ERROR] DtrCreatePcpu failed: 0x%08x\n", status);
@@ -110,6 +110,7 @@ void EntryPoint(
     pBsp->IsBsp = TRUE;
     pBsp->Number = 0;
     pBsp->Self = pBsp;
+    pBsp->ApicId = CpuGetInitialApicId();
     status = DtrInitAndLoadAll(pBsp);
     if (!NT_SUCCESS(status))
     {

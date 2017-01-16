@@ -5,6 +5,9 @@
 #include "string.h"
 #include "acpitables.h"
 #include "virtmemmgr.h"
+#include "dtr.h"
+#include "msrdefs.h"
+#include "panic.h"
 
 /// TODO: integrate ACPICA lib to make this simpler
 
@@ -348,10 +351,40 @@ AcpiParseMadt(
         switch (pMadt->Header.Type)
         {
         case MADT_TYPE_LOCAL_APIC:
+        {
+            PPCPU pBsp = GetCurrentCpu();
+
             Log("[ACPI] Found ACPI_MADT_TYPE_LOCAL_APIC @ %p\n", pMadt);
             Log("\t\t ACPI Processor ID: %d\n", pMadt->ProcessorId);
             Log("\t\t Local APIC ID:     %d\n", pMadt->Id);
             Log("\t\t LAPIC Flags:       0x%x\n", pMadt->LapicFlags);
+
+            if (pBsp->ApicId != pMadt->ProcessorId)
+            {
+                PPCPU pPcpu = NULL;
+                status = DtrAllocPcpu(&pPcpu);
+                if (NT_SUCCESS(status))
+                {
+                    pPcpu->ApicId = pMadt->ProcessorId;
+                    pPcpu->IsBsp = FALSE;
+                    pPcpu->Number = (DWORD)-1;                     // not yet initialized
+                    pPcpu->Self = pPcpu;
+                    
+                    // copy the IDT, GDT and TSS from the BSP
+                    memcpy(&pPcpu->Gdt, &pBsp->Gdt, sizeof(pBsp->Gdt));
+                    memcpy(&pPcpu->Gdtr, &pBsp->Gdtr, sizeof(pBsp->Gdtr));
+                    memcpy(&pPcpu->Idt, &pBsp->Idt, sizeof(pBsp->Idt));
+                    memcpy(&pPcpu->Idtr, &pBsp->Idtr, sizeof(pBsp->Idtr));
+                    memcpy(&pPcpu->Tss, &pBsp->Tss, sizeof(pBsp->Tss));
+                    memcpy(&pPcpu->Tr, &pBsp->Tr, sizeof(pBsp->Tr));
+                }
+                else
+                {
+                    LogWithInfo("[ERROR] DtrAllocPcpu failed: 0x%08x\n", status);
+                    PANIC("Failed to allocate a new PCPU!\n");
+                }
+            }
+        }
 
             break;
 

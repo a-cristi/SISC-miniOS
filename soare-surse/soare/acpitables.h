@@ -141,4 +141,11 @@ AcpiParseXRsdt(
     _In_ BOOLEAN Extended
 );
 
+//
+// APIC Base MSR bits
+//
+#define APIC_BASE_CPU_IS_BSP        BIT(8)
+#define APIC_BASE_GLB_EBABLED       BIT(11)
+#define APIC_BASE_MASK              0xFEE00000ULL
+
 #endif // !_ACPITABLES_H_
