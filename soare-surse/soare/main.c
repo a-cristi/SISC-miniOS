@@ -19,6 +19,8 @@
 #include "buildinfo.h"
 #include "keyboard.h"
 #include "acpitables.h"
+#include "smp.h"
+#include "apic.h"
 
 extern KGLOBAL gKernelGlobalData;
 
@@ -141,6 +143,12 @@ void EntryPoint(
     }
     Log(" Done!\n");
 
+    status = ApicInit();
+    if (!NT_SUCCESS(status))
+    {
+        LogWithInfo("[ERROR] ApicInit failed: 0x%08x\n", status);
+        PANIC("Failed to initialize APIC!");
+    }
     {
         QWORD rsdpPa = 0;
         status = AcpiFindRootPointer(&rsdpPa);
@@ -177,6 +185,12 @@ void EntryPoint(
                 {
                     LogWithInfo("[ERROR] AcpiParseXRsdt failed for 0x%08x: 0x%08x\n", pRsdp->RsdtPhysicalAddress, status);
                 }
+            }
+
+            status = MpPrepareApZone(DtrGetCpuState());
+            if (!NT_SUCCESS(status))
+            {
+                LogWithInfo("[ERROR] MpPrepareApZone failed: 0x%08x\n", status);
             }
 
             MmUnmapRangeAndNull(&pRsdp, sizeof(RSDP_TABLE), MAP_FLG_SKIP_PHYPAGE_CHECK);

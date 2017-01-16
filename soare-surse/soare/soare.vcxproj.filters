@@ -128,6 +128,9 @@
     <ClCompile Include="smp.c">
       <Filter>Source Files\kernel</Filter>
     </ClCompile>
+    <ClCompile Include="apic.c">
+      <Filter>Source Files\kernel</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="boot.h">
@@ -229,6 +232,12 @@
     <ClInclude Include="msrdefs.h">
       <Filter>Header Files\kernel</Filter>
     </ClInclude>
+    <ClInclude Include="smp.h">
+      <Filter>Header Files\kernel</Filter>
+    </ClInclude>
+    <ClInclude Include="apic.h">
+      <Filter>Header Files\kernel</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="postbuild.cmd">
@@ -238,6 +247,9 @@
   <ItemGroup>
     <YASM Include="__init.yasm" />
     <YASM Include="hwexcp.yasm">
+      <Filter>Source Files\kernel</Filter>
+    </YASM>
+    <YASM Include="apstubs.yasm">
       <Filter>Source Files\kernel</Filter>
     </YASM>
   </ItemGroup>

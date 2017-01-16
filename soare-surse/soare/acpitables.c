@@ -359,13 +359,13 @@ AcpiParseMadt(
             Log("\t\t Local APIC ID:     %d\n", pMadt->Id);
             Log("\t\t LAPIC Flags:       0x%x\n", pMadt->LapicFlags);
 
-            if (pBsp->ApicId != pMadt->ProcessorId)
+            if (pBsp->ApicId != pMadt->Id)
             {
                 PPCPU pPcpu = NULL;
                 status = DtrAllocPcpu(&pPcpu);
                 if (NT_SUCCESS(status))
                 {
-                    pPcpu->ApicId = pMadt->ProcessorId;
+                    pPcpu->ApicId = pMadt->Id;
                     pPcpu->IsBsp = FALSE;
                     pPcpu->Number = (DWORD)-1;                     // not yet initialized
                     pPcpu->Self = pPcpu;

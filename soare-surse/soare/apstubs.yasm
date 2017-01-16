@@ -1,0 +1,227 @@
+REAL_LIMIT			equ 0x100000					; 1MB
+
+;;
+;; Selectors
+;;
+CODE32_SEL			equ	0x08
+DATA32_SEL			equ 0x10
+CODE16_SEL			equ 0x18
+DATA16_SEL			equ 0x20
+
+CODE64_SEL			equ 0x08 
+DATA64_SEL			equ 0x10 
+
+IA32_EFER           equ 0xC0000080
+CR4_PAE             equ 0x00000020
+IA23_EFER_LME       equ 0x100
+
+AP_Init_BASE		equ	0x7000
+
+;;
+;; Trampoline used to init the APs (common stub)
+;; This must be copied < 1MB because APs start in real mode
+;;
+;; !! WE HAVE NO STACK and we don't set one up untill we reach Protected Mode
+AP_START:
+[bits 16]
+AP_Init:
+    cli
+
+    xor		ax, ax
+    mov		ds, ax
+    mov		es, ax
+    mov		fs, ax
+    mov		gs, ax
+    mov		ss, ax
+
+	mov		di, ApCpuCount - AP_Init
+	add		di, AP_Init_BASE
+
+    ;; syncronize acces to CPU count
+    ;; see 8.10.6.1 Use the PAUSE Instruction in Spin-Wait Loops
+	mov		bx, ApInitLock - AP_Init
+	add		bx, AP_Init_BASE
+    lock	bts dword [bx], 0                   ; attempt to get the lock
+    jnc		.CriticalSection                    ; we got the lock
+.SpinLoop:
+    pause
+    bt		dword [bx], 0				        ; if bit 0 is set, someone else has the lock
+    jc		.SpinLoop							; try again
+    lock	bts dword [bx], 0			        ; no one HAD the lock, try to get it
+    jc		.SpinLoop							; but someone else got it
+.CriticalSection:								; we acquired the lock	
+    inc		byte [di]                           ; increment CPU count
+	xor		cx, cx
+	mov		cl, [di]
+.Release:
+    mov     dword [bx], 0
+    
+    ;; signal our presence
+    mov	    ax, 0xB000
+	mov		es, ax
+	mov     ax, '11'
+	mov     di, 0x80a0
+	mov     word [es:di], ax
+	
+InitRealMode:
+	;; CX still had the current CPU number
+	mov		bx, cx
+	shl		bx, 3										; bx = current CPU number * 8
+	mov		sp, ApStacks - AP_Init
+	add		sp, AP_Init_BASE
+	add		sp, bx
+    
+;; go to protected mode	
+ApSwitchToPm:	
+	lgdt	[ApGdtr - AP_Init + AP_Init_BASE]
+ 
+    mov     eax, cr0
+    or      al, 1                                       ; Set CR0.PE
+    mov     cr0, eax
+;;  jmp far CODE32_SEL:ApProtectedMode
+    db      0x66										; 32 Bit prefix
+    db      0xEA
+    dd      ApProtectedMode - AP_Init + AP_Init_BASE
+    dw      CODE32_SEL
+    cli
+    hlt	
+    
+ApRealModeEnd:
+
+[bits 32]
+ApProtectedMode:
+    cli	
+	hlt
+
+    mov		ax, DATA32_SEL
+    mov		ds, ax
+    mov		es, ax
+    mov		fs, ax
+    mov		gs, ax
+    mov		ss, ax
+    
+	;; save Cpu Count
+    push    ecx
+
+    mov		eax, '8888'
+    mov		edi, 0xB8000
+    add		di, cx
+    mov		[edi], eax
+
+	;; Enable PAE
+    mov     eax, cr4
+    or      eax, CR4_PAE
+    mov     cr4, eax
+    
+	mov		eax, ApIdentityPdbr - AP_Init
+	add		eax, AP_Init_BASE
+    mov		eax, [eax]
+    mov		cr3, eax
+    
+    ;; we are in an identity mapped page	
+    mov     ecx, IA32_EFER          
+    rdmsr                           
+    or      eax, IA23_EFER_LME      
+    wrmsr
+    
+	;; Restore Cpu Count
+    pop		ecx
+    
+	;; Enable paging
+	mov		eax, cr0
+	or		eax, 0x80000000
+	mov		cr0, eax	
+
+;;
+;; 64 bit compatibility mode
+;;
+[bits 64]
+ApCompatibilityMode:  
+	mov     eax, ApGdtr64 - AP_Init
+	add		eax, AP_Init_BASE
+    lgdt	[eax]
+
+    ; load CS with CODE64_SEL
+    push	CODE64_SEL										
+	mov		eax, ApLongMode - AP_Init
+	add		eax, AP_Init_BASE
+	push	rax
+    retf
+    
+    hlt
+
+;; True 64bit mode
+[bits 64]
+ApLongMode:
+    cli	
+    
+    mov		ax, DATA64_SEL
+    mov		fs, ax
+    mov		gs, ax
+    mov		ss, ax
+    mov		ds, ax
+    mov		es, ax
+    
+	mov     rax, cr4
+	or      rax, 0x0000000000000200
+	mov     cr4, rax
+
+	sub		rsp, 0x20
+	mov     rax, ApEntryPoint - AP_Init
+	add		rax, AP_Init_BASE
+	call	rax
+    
+	cli
+    hlt
+
+AP_DATA:
+ApCpuCount:			dd		0                        ; Must be filled by the BSP before init								
+ApInitLock:			dd		0                        ; Must be filled by the BSP before init
+ApFlags:			times	8	db	0                ; Will be set by the BSP when the AP is acknowledged
+ApStacks:			times	64	dq	0                ; Temporary stack, each AP has 8 QWORDs
+ApGdtr:
+	.GdtSize:		dw	5 * 8 - 1
+	ApGdtAddress:	dq	0                            ; Must be filled by the BSP before init
+ApGdt:
+	.GdtNull:		dq	0
+	.GdtCode32:		dq	0x00CF9A000000FFFF
+	.GdtData32:		dq	0x00CF92000000FFFF
+	.GdtCode16:		dq  0x000F9A000000FFFF
+	.GdtData16:		dq  0x000F92000000FFFF
+ApIdentityPdbr:		dd  0                            ; Must be filled by the BSP before init
+ApFinalPdbr:		dq  0                            ; Must be filled by the BSP before init
+ApGdtr64:
+	.Gdt64Size:	    dw  3 * 8 - 1
+	ApGdt64Address: dq  0                            ; Must be filled by the BSP before init
+ApGdt64:
+	.Gdt64Null:		dq  0
+	.Gdt64Code:     dq  0x002F9A000000FFFF
+	.Gdt64Data:     dq  0x00CF92000000FFFF
+ApEntryPoint:		dq	0							 ; Must be filled by the BSP before init
+
+AP_END:
+	nop
+
+global ApCpuCount
+global ApInitLock
+global ApFlags	
+global ApStacks
+global ApGdtr
+global ApGdt
+global ApIdentityPdbr
+global ApFinalPdbr
+global ApGdtr64
+global ApGdt64
+global ApEntryPoint
+global ApGdtAddress
+global ApGdt64Address
+
+;global ApProtectedModeJmpOffset
+global ApProtectedMode
+
+global ApSwitchToPm
+
+global AP_START
+global AP_END
+
+extern ApEntryPoint64
