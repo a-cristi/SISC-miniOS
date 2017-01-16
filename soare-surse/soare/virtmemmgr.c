@@ -1006,7 +1006,8 @@ MmMapPhysicalPages(
 
     status = STATUS_SUCCESS;
     *Ptr = (VOID *)(vaStart + (PhysicalBase - startPa));
-    LogWithInfo("[PAMAP] Returning %018p (%018p) for %018p (%018p)\n", *Ptr, vaStart, PhysicalBase, startPa);
+    //LogWithInfo("[PAMAP] Returning %018p (%018p) for %018p (%018p)\n", *Ptr, vaStart, PhysicalBase, startPa);
+    LogWithInfo("[PAMAP] Returning %018p in [%018p, %018p) \n", *Ptr, vaStart, vaStart + rangeSize);
 
 _cleanup_and_exit:
     if (!NT_SUCCESS(status))
@@ -1039,9 +1040,13 @@ MmUnmapRangeAndNull(
         return STATUS_INVALID_PARAMETER_1;
     }
 
+    LogWithInfo("[PAMAP] Requested unmap for [%018p, %018p)\n", *Ptr, (QWORD)*Ptr + Length);
+
     qwPtr = ROUND_DOWN((QWORD)*Ptr, PAGE_SIZE_4K);
     Length = (DWORD)(ROUND_UP((QWORD)*Ptr + Length, PAGE_SIZE_4K) - qwPtr);
     pages = SMALL_PAGE_COUNT(Length);
+
+    LogWithInfo("[PAMAP] Will free [%018p, %018p)\n", qwPtr, qwPtr + Length);
 
     for (QWORD p = 0; p < pages; p++)
     {

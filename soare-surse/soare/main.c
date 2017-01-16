@@ -18,6 +18,7 @@
 #include "debugger.h"
 #include "buildinfo.h"
 #include "keyboard.h"
+#include "acpitables.h"
 
 extern KGLOBAL gKernelGlobalData;
 
@@ -138,6 +139,49 @@ void EntryPoint(
         PANIC("Failed to initilize the keyboard!");
     }
     Log(" Done!\n");
+
+    {
+        QWORD rsdpPa = 0;
+        status = AcpiFindRootPointer(&rsdpPa);
+        if (!NT_SUCCESS(status))
+        {
+            Log("[ERROR] AcpiFindRootPointer failed: 0x%08x\n", status);
+        }
+        else
+        {
+            Log("RSDP @ %018p\n", rsdpPa);
+        }
+        PRSDP_TABLE pRsdp = NULL;
+        status = MmMapPhysicalPages(rsdpPa, sizeof(RSDP_TABLE), &pRsdp, MAP_FLG_SKIP_PHYPAGE_CHECK);
+        if (!NT_SUCCESS(status))
+        {
+            LogWithInfo("[ERROR] MmMapPhysicalPages failed for %018p: 0x%08x\n", rsdpPa, status);
+        }
+        else
+        {
+            AcpiDumpRsdp(pRsdp);
+
+            if (0 == pRsdp->Revision || ACPI_ALWAYS_USE_RSDT)
+            {
+                status = AcpiParseXRsdt(pRsdp->RsdtPhysicalAddress, FALSE);
+                if (!NT_SUCCESS(status))
+                {
+                    LogWithInfo("[ERROR] AcpiParseXRsdt failed for 0x%08x: 0x%08x\n", pRsdp->RsdtPhysicalAddress, status);
+                }
+            }
+            else if (2 >= pRsdp->Revision)
+            {
+                status = AcpiParseXRsdt(pRsdp->XsdtPhysicalAddress, TRUE);
+                if (!NT_SUCCESS(status))
+                {
+                    LogWithInfo("[ERROR] AcpiParseXRsdt failed for 0x%08x: 0x%08x\n", pRsdp->RsdtPhysicalAddress, status);
+                }
+            }
+
+            MmUnmapRangeAndNull(&pRsdp, sizeof(RSDP_TABLE), MAP_FLG_SKIP_PHYPAGE_CHECK);
+        }
+    }
+
     while (TRUE)
     {
         CHAR c;
