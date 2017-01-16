@@ -161,7 +161,7 @@ void EntryPoint(
         {
             AcpiDumpRsdp(pRsdp);
 
-            if (0 == pRsdp->Revision)
+            if (0 == pRsdp->Revision || ACPI_ALWAYS_USE_RSDT)
             {
                 status = AcpiParseXRsdt(pRsdp->RsdtPhysicalAddress, FALSE);
                 if (!NT_SUCCESS(status))

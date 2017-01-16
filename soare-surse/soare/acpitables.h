@@ -1,6 +1,9 @@
 #ifndef _ACPITABLES_H_
 #define _ACPITABLES_H_
 
+// If this is defined, we will always use the RSDT, even if the XSDT is available
+#define ACPI_ALWAYS_USE_RSDT            1
+
 #define ACPI_RSDP_SIGNATURE             "RSD PTR "
 
 #define ACPI_OEM_ID_SIZE                6

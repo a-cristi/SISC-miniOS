@@ -201,6 +201,9 @@ AcpiParseXRsdt(
         goto _cleanup_and_exit;
     }
 
+    Log("[ACPI] Mapped %s (%018p) @ %018p with size 0x%08x\n", 
+        Extended ? "XSDT" : "RSDT", TablePhysicalAddress, pSdt, tableSize);
+
     if (Extended)
     {
         pXsdt = (XSDT_TABLE *)pSdt;
@@ -213,8 +216,6 @@ AcpiParseXRsdt(
         entries = (pRsdt->Header.Length - sizeof(pRsdt->Header)) / sizeof(pRsdt->TableOffsetEntry[0]);
         pCommonHeader = &pRsdt->Header;
     }
-
-    Log("[ACPI] %s @ %018p (Header @ %018p)\n", Extended ? "XSDT" : "RSDT", pSdt, pCommonHeader);
 
     if (AcpiGetTableChecksum((BYTE *)pCommonHeader, pCommonHeader->Length))
     {
@@ -235,6 +236,7 @@ AcpiParseXRsdt(
         QWORD headerPa = Extended ? pXsdt->TableOffsetEntry[i] : pRsdt->TableOffsetEntry[i];
         PACPI_TABLE_HEADER pHeader = NULL;
 
+        Log("[ACPI] %s[%d] = %018p\n", Extended ? "XSDT" : "RSDT", i, headerPa);
         status = MmMapPhysicalPages(headerPa, sizeof(ACPI_TABLE_HEADER), &pHeader, MAP_FLG_SKIP_PHYPAGE_CHECK);
         if (!NT_SUCCESS(status))
         {
