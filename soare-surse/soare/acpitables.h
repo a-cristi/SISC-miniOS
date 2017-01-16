@@ -2,7 +2,7 @@
 #define _ACPITABLES_H_
 
 // If this is defined, we will always use the RSDT, even if the XSDT is available
-#define ACPI_ALWAYS_USE_RSDT            1
+#define ACPI_ALWAYS_USE_RSDT            0
 
 #define ACPI_RSDP_SIGNATURE             "RSD PTR "
 
@@ -29,17 +29,21 @@
 //
 // ACPI Tables (not all, just the one we need)
 //
+
+#pragma pack(push)
+#pragma pack(1)
+
 typedef struct _ACPI_TABLE_HEADER
 {
-    char                    Signature[ACPI_NAME_SIZE];          // Table signature
-    UINT32                  Length;                             // Size of table in bytes, including this header
-    UINT8                   Revision;                           // ACPI revision
-    UINT8                   Checksum;                           // Sum of entire table must be 0
-    char                    OemId[ACPI_OEM_ID_SIZE];            // OEM identification
-    char                    OemTableId[ACPI_OEM_TABLE_ID_SIZE]; // OEM table identification
-    UINT32                  OemRevision;                        // OEM revision number
-    char                    AslCompilerId[ACPI_NAME_SIZE];      // ASCII ASL compiler vendor ID
-    UINT32                  AslCompilerRevision;                // ASL compiler version
+    CHAR                    Signature[ACPI_NAME_SIZE];          // Table signature
+    DWORD                   Length;                             // Size of table in bytes, including this header
+    BYTE                    Revision;                           // ACPI revision
+    BYTE                    Checksum;                           // Sum of entire table must be 0
+    CHAR                    OemId[ACPI_OEM_ID_SIZE];            // OEM identification
+    CHAR                    OemTableId[ACPI_OEM_TABLE_ID_SIZE]; // OEM table identification
+    DWORD                   OemRevision;                        // OEM revision number
+    CHAR                    AslCompilerId[ACPI_NAME_SIZE];      // ASCII ASL compiler vendor ID
+    DWORD                   AslCompilerRevision;                // ASL compiler version
 } ACPI_TABLE_HEADER, *PACPI_TABLE_HEADER;
 
 typedef struct _RSDP_TABLE
@@ -100,6 +104,8 @@ typedef struct _MADT_LOCAL_APIC_TABLE
     BYTE                    Id;                         // Local APIC ID
     DWORD                   LapicFlags;
 } MADT_LOCAL_APIC_TABLE, *PMADT_LOCAL_APIC_TABLE;
+
+#pragma pack(pop)
 
 
 BYTE
