@@ -160,6 +160,24 @@ void EntryPoint(
         else
         {
             AcpiDumpRsdp(pRsdp);
+
+            if (0 == pRsdp->Revision)
+            {
+                status = AcpiParseXRsdt(pRsdp->RsdtPhysicalAddress, FALSE);
+                if (!NT_SUCCESS(status))
+                {
+                    LogWithInfo("[ERROR] AcpiParseXRsdt failed for 0x%08x: 0x%08x\n", pRsdp->RsdtPhysicalAddress, status);
+                }
+            }
+            else if (2 >= pRsdp->Revision)
+            {
+                status = AcpiParseXRsdt(pRsdp->XsdtPhysicalAddress, TRUE);
+                if (!NT_SUCCESS(status))
+                {
+                    LogWithInfo("[ERROR] AcpiParseXRsdt failed for 0x%08x: 0x%08x\n", pRsdp->RsdtPhysicalAddress, status);
+                }
+            }
+
             MmUnmapRangeAndNull(&pRsdp, sizeof(RSDP_TABLE), MAP_FLG_SKIP_PHYPAGE_CHECK);
         }
     }
