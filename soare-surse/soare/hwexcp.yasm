@@ -1,0 +1,633 @@
+[bits 64]
+
+;;
+;; Error codes
+;;
+EXCEPTION_DIVIDE_ERROR                      equ 0
+EXCEPTION_DEBUG                             equ 1
+EXCEPTION_NMI                               equ 2
+EXCEPTION_BREAKPOINT                        equ 3
+EXCEPTION_OVERFLOW                          equ 4
+EXCEPTION_BOUND                             equ 5
+EXCEPTION_INVALID_OPCODE                    equ 6
+EXCEPTION_DEVICE_NOT_AVAIL                  equ 7
+EXCEPTION_DOUBLE_FAULT                      equ 8
+EXCEPTION_COPROC                            equ 9
+EXCEPTION_INVALID_TSS                       equ 10
+EXCEPTION_SEGMENT_NOT_PRESENT               equ 11
+EXCEPTION_STACK_FAULT                       equ 12
+EXCEPTION_GENERAL_PROTECTION                equ 13
+EXCEPTION_PAGE_FAULT                        equ 14
+EXCEPTION_FPU_ERROR                         equ 16
+EXCEPTION_ALIGNMENT_CHECK                   equ 17
+EXCEPTION_MACHINE_CHECK                     equ 18
+EXCEPTION_SIMD_ERROR                        equ 19
+
+;;
+;; Trap frame structure (keep in sync with that from execp.h!!)
+;;
+STRUC TRAP_FRAME
+    .Home           resq 4
+
+    ._Reserved0     resq 1
+
+    .Self           resq 1
+
+    .ExceptionCode  resq 1
+
+    ;; GPRs
+    .RegRax         resq 1
+    .RegRbx         resq 1
+    .RegRdx         resq 1
+    .RegRcx         resq 1
+    .RegRsi         resq 1
+    .RegRdi         resq 1
+    .RegR8          resq 1
+    .RegR9          resq 1
+    .RegR10         resq 1
+    .RegR11         resq 1
+    .RegR12         resq 1
+    .RegR13         resq 1
+    .RegR14         resq 1
+    .RegR15         resq 1
+
+    ;; Segments
+    .SegDs          resw 1
+    ._DsFill        resw 3
+
+    .SegEs          resw 1
+    ._EsFill        resw 3
+
+    .SegFs          resw 1
+    ._FsFill        resw 3
+
+    .SegGs          resw 1
+    ._GsFill        resw 3
+
+    ;; CS and SS could be declared here, but I'd rather have them near RIP and RSP
+
+    .Cr2            resq 1  ; for #PF
+    ._Reserved1     resq 1
+    .RegRbp         resq 1
+
+    .ErrorCode      resq 1  ; if the CPU pushed one
+
+    .RegRip         resq 1
+    .SegCs          resw 1
+    ._FillCs        resw 3
+
+    .Eflags         resd 1
+    ._EflagsFill    resd 1
+
+    .Rsp            resq 1
+    .SegSs          resw 1
+    ._SsFill        resw 3
+ENDSTRUC
+
+%macro GENERATE_TRAP_FRAME 0-1
+    %if %0 = 0  ;; no error code
+        push    0
+    %endif
+
+    push    rbp
+
+    sub     rsp, (TRAP_FRAME_size - (7 * 8))
+    mov     rbp, rsp
+
+    ;; Save GPRs
+    mov     [rbp + TRAP_FRAME.RegRax], rax
+    mov     [rbp + TRAP_FRAME.RegRbx], rbx
+    mov     [rbp + TRAP_FRAME.RegRcx], rcx
+    mov     [rbp + TRAP_FRAME.RegRdx], rdx
+    mov     [rbp + TRAP_FRAME.RegRsi], rsi
+    mov     [rbp + TRAP_FRAME.RegRdi], rdi
+    mov     [rbp + TRAP_FRAME.RegR8],  r8
+    mov     [rbp + TRAP_FRAME.RegR9],  r9
+    mov     [rbp + TRAP_FRAME.RegR10], r10
+    mov     [rbp + TRAP_FRAME.RegR11], r11
+    mov     [rbp + TRAP_FRAME.RegR12], r12
+    mov     [rbp + TRAP_FRAME.RegR13], r13
+    mov     [rbp + TRAP_FRAME.RegR14], r14
+    mov     [rbp + TRAP_FRAME.RegR15], r15
+
+    ;; Save segments
+    mov     ax, ds
+    mov     [rbp + TRAP_FRAME.SegDs], ax
+    
+    mov     ax, es
+    mov     [rbp + TRAP_FRAME.SegEs], ax
+    
+    mov     ax, fs
+    mov     [rbp + TRAP_FRAME.SegFs], ax
+    
+    mov     ax, gs
+    mov     [rbp + TRAP_FRAME.SegGs], ax
+
+    mov     [rbp + TRAP_FRAME.Self], rbp
+%endmacro
+
+%macro EXIT_EXCEPTION_HANDLER 0
+    cli
+    hlt
+%endmacro
+
+%macro RESTORE_CONTEXT_FROM_TRAP_FRAME 0
+    mov     rax, [rbp + TRAP_FRAME.RegRax]
+    mov     rbx, [rbp + TRAP_FRAME.RegRbx]
+    mov     rcx, [rbp + TRAP_FRAME.RegRcx]
+    mov     rdx, [rbp + TRAP_FRAME.RegRdx]
+    mov     rsi, [rbp + TRAP_FRAME.RegRsi]
+    mov     rdi, [rbp + TRAP_FRAME.RegRdi]
+    mov     r8, [rbp + TRAP_FRAME.RegR8]
+    mov     r9, [rbp + TRAP_FRAME.RegR9]
+    mov     r10, [rbp + TRAP_FRAME.RegR10]
+    mov     r11, [rbp + TRAP_FRAME.RegR11]
+    mov     r12, [rbp + TRAP_FRAME.RegR12]
+    mov     r13, [rbp + TRAP_FRAME.RegR13]
+    mov     r14, [rbp + TRAP_FRAME.RegR14]
+    mov     r15, [rbp + TRAP_FRAME.RegR15]
+    
+    mov     rsp, rbp
+    add     rsp, (TRAP_FRAME_size - (7 * 8))
+    pop     rbp
+%endmacro
+
+%macro BEGIN_IRQ 0
+    cli
+%endmacro
+
+%macro END_IRQ 0
+    push    rax
+    mov     al, 0x20    ;; Send EOI
+    out     0x20, al
+    pop     rax
+    sti
+    iretq
+%endmacro
+
+;;
+;; Export the handlers
+;;
+
+global ExHndDivideError
+global ExHndDbg
+global ExHndNMI
+global ExHndBp
+global ExHndOverflow
+global ExHndBnd
+global ExHndInvalidOpcode
+global ExHndDeviceNotAvailable
+global ExHndDoubleFault
+global ExHndCoprocSegmentOverrun
+global ExHndInvalidTSS
+global ExHndSegmentNotPresent
+global ExHndStackFault
+global ExHndGeneralProtection
+global ExHndPageFault
+global ExHndReserved15
+global ExHndFPUError
+global ExHndAlignmentCheck
+global ExHndMachineCheck
+global ExHndSIMDError
+
+;;
+;; External common handler
+;;
+extern ExHndCommon
+
+;;
+;; Implement the handlers
+;;
+
+ExHndDivideError:
+    GENERATE_TRAP_FRAME
+
+    xor     rcx, rcx
+    mov     ecx, EXCEPTION_DIVIDE_ERROR
+    mov     QWORD [rbp + TRAP_FRAME.ExceptionCode], rcx
+
+    mov     rdx, rbp
+    sub     rsp, 4 * 8
+    call    ExHndCommon
+    add     rsp, 4 * 8
+
+    EXIT_EXCEPTION_HANDLER
+
+ExHndDbg:
+    GENERATE_TRAP_FRAME
+
+    xor     rcx, rcx
+    mov     ecx, EXCEPTION_DEBUG
+    mov     QWORD [rbp + TRAP_FRAME.ExceptionCode], rcx
+
+    mov     rdx, rbp
+    sub     rsp, 4 * 8
+    call    ExHndCommon
+    add     rsp, 4 * 8
+
+    EXIT_EXCEPTION_HANDLER
+
+ExHndNMI:
+    GENERATE_TRAP_FRAME
+
+    xor     rcx, rcx
+    mov     ecx, EXCEPTION_NMI
+    mov     QWORD [rbp + TRAP_FRAME.ExceptionCode], rcx
+
+    mov     rdx, rbp
+    sub     rsp, 4 * 8
+    call    ExHndCommon
+    add     rsp, 4 * 8
+
+    EXIT_EXCEPTION_HANDLER
+
+ExHndBp:
+    GENERATE_TRAP_FRAME
+
+    xor     rcx, rcx
+    mov     ecx, EXCEPTION_BREAKPOINT
+    mov     QWORD [rbp + TRAP_FRAME.ExceptionCode], rcx
+
+    mov     rdx, rbp
+    sub     rsp, 4 * 8
+    call    ExHndCommon
+    add     rsp, 4 * 8
+
+    EXIT_EXCEPTION_HANDLER
+
+ExHndOverflow:
+    GENERATE_TRAP_FRAME
+
+    xor     rcx, rcx
+    mov     ecx, EXCEPTION_OVERFLOW
+    mov     QWORD [rbp + TRAP_FRAME.ExceptionCode], rcx
+
+    mov     rdx, rbp
+    sub     rsp, 4 * 8
+    call    ExHndCommon
+    add     rsp, 4 * 8
+
+    EXIT_EXCEPTION_HANDLER
+
+ExHndBnd:
+    GENERATE_TRAP_FRAME
+
+    xor     rcx, rcx
+    mov     ecx, EXCEPTION_BOUND
+    mov     QWORD [rbp + TRAP_FRAME.ExceptionCode], rcx
+
+    mov     rdx, rbp
+    sub     rsp, 4 * 8
+    call    ExHndCommon
+    add     rsp, 4 * 8
+
+    EXIT_EXCEPTION_HANDLER
+
+ExHndInvalidOpcode:
+    GENERATE_TRAP_FRAME
+
+    xor     rcx, rcx
+    mov     ecx, EXCEPTION_INVALID_OPCODE
+    mov     QWORD [rbp + TRAP_FRAME.ExceptionCode], rcx
+
+    mov     rdx, rbp
+    sub     rsp, 4 * 8
+    call    ExHndCommon
+    add     rsp, 4 * 8
+
+    EXIT_EXCEPTION_HANDLER
+
+ExHndDeviceNotAvailable:
+    GENERATE_TRAP_FRAME
+
+    xor     rcx, rcx
+    mov     ecx, EXCEPTION_DEVICE_NOT_AVAIL
+    mov     QWORD [rbp + TRAP_FRAME.ExceptionCode], rcx
+
+    mov     rdx, rbp
+    sub     rsp, 4 * 8
+    call    ExHndCommon
+    add     rsp, 4 * 8
+
+    EXIT_EXCEPTION_HANDLER
+
+ExHndDoubleFault:
+    GENERATE_TRAP_FRAME "yes"
+
+    xor     rcx, rcx
+    mov     ecx, EXCEPTION_DOUBLE_FAULT
+    mov     QWORD [rbp + TRAP_FRAME.ExceptionCode], rcx
+
+    mov     rdx, rbp
+    sub     rsp, 4 * 8
+    call    ExHndCommon
+    add     rsp, 4 * 8
+
+    EXIT_EXCEPTION_HANDLER
+
+ExHndCoprocSegmentOverrun:
+    GENERATE_TRAP_FRAME
+
+    xor     rcx, rcx
+    mov     ecx, EXCEPTION_COPROC
+    mov     QWORD [rbp + TRAP_FRAME.ExceptionCode], rcx
+
+    mov     rdx, rbp
+    sub     rsp, 4 * 8
+    call    ExHndCommon
+    add     rsp, 4 * 8
+
+    EXIT_EXCEPTION_HANDLER
+
+ExHndInvalidTSS:
+    GENERATE_TRAP_FRAME "yes"
+
+    xor     rcx, rcx
+    mov     ecx, EXCEPTION_INVALID_TSS
+    mov     QWORD [rbp + TRAP_FRAME.ExceptionCode], rcx
+
+    mov     rdx, rbp
+    sub     rsp, 4 * 8
+    call    ExHndCommon
+    add     rsp, 4 * 8
+
+    EXIT_EXCEPTION_HANDLER
+
+ExHndSegmentNotPresent:
+    GENERATE_TRAP_FRAME "yes"
+
+    xor     rcx, rcx
+    mov     ecx, EXCEPTION_SEGMENT_NOT_PRESENT
+    mov     QWORD [rbp + TRAP_FRAME.ExceptionCode], rcx
+
+    mov     rdx, rbp
+    sub     rsp, 4 * 8
+    call    ExHndCommon
+    add     rsp, 4 * 8
+
+    EXIT_EXCEPTION_HANDLER
+
+ExHndStackFault:
+    GENERATE_TRAP_FRAME "yes"
+
+    xor     rcx, rcx
+    mov     ecx, EXCEPTION_STACK_FAULT
+    mov     QWORD [rbp + TRAP_FRAME.ExceptionCode], rcx
+
+    mov     rdx, rbp
+    sub     rsp, 4 * 8
+    call    ExHndCommon
+    add     rsp, 4 * 8
+
+    EXIT_EXCEPTION_HANDLER
+
+ExHndGeneralProtection:
+    GENERATE_TRAP_FRAME "yes"
+
+    xor     rcx, rcx
+    mov     ecx, EXCEPTION_GENERAL_PROTECTION
+    mov     QWORD [rbp + TRAP_FRAME.ExceptionCode], rcx
+
+    mov     rdx, rbp
+    sub     rsp, 4 * 8
+    call    ExHndCommon
+    add     rsp, 4 * 8
+
+    EXIT_EXCEPTION_HANDLER
+
+ExHndPageFault:
+    GENERATE_TRAP_FRAME "yes"
+
+    xor     rcx, rcx
+    mov     ecx, EXCEPTION_PAGE_FAULT
+    mov     QWORD [rbp + TRAP_FRAME.ExceptionCode], rcx
+
+    mov     rax, cr2
+    mov     [rbp + TRAP_FRAME.Cr2], rax
+
+    mov     rdx, rbp
+    sub     rsp, 4 * 8
+    call    ExHndCommon
+    add     rsp, 4 * 8
+
+    EXIT_EXCEPTION_HANDLER
+
+ExHndReserved15:
+    GENERATE_TRAP_FRAME "yes"
+
+    xor     rcx, rcx
+    mov     ecx, 0xFFFF     ;; this should not happen
+    mov     QWORD [rbp + TRAP_FRAME.ExceptionCode], rcx
+
+    mov     rdx, rbp
+    sub     rsp, 4 * 8
+    call    ExHndCommon
+    add     rsp, 4 * 8
+
+    EXIT_EXCEPTION_HANDLER
+
+ExHndFPUError:
+    GENERATE_TRAP_FRAME
+
+    xor     rcx, rcx
+    mov     ecx, EXCEPTION_FPU_ERROR
+    mov     QWORD [rbp + TRAP_FRAME.ExceptionCode], rcx
+
+    mov     rdx, rbp
+    sub     rsp, 4 * 8
+    call    ExHndCommon
+    add     rsp, 4 * 8
+
+    EXIT_EXCEPTION_HANDLER
+
+ExHndAlignmentCheck:
+    GENERATE_TRAP_FRAME "yes"
+
+    xor     rcx, rcx
+    mov     ecx, EXCEPTION_ALIGNMENT_CHECK
+    mov     QWORD [rbp + TRAP_FRAME.ExceptionCode], rcx
+
+    mov     rdx, rbp
+    sub     rsp, 4 * 8
+    call    ExHndCommon
+    add     rsp, 4 * 8
+
+    EXIT_EXCEPTION_HANDLER
+
+ExHndMachineCheck:
+    GENERATE_TRAP_FRAME
+
+    xor     rcx, rcx
+    mov     ecx, EXCEPTION_MACHINE_CHECK
+    mov     QWORD [rbp + TRAP_FRAME.ExceptionCode], rcx
+
+    mov     rdx, rbp
+    sub     rsp, 4 * 8
+    call    ExHndCommon
+    add     rsp, 4 * 8
+
+    EXIT_EXCEPTION_HANDLER
+
+ExHndSIMDError:
+    GENERATE_TRAP_FRAME
+
+    xor     rcx, rcx
+    mov     ecx, EXCEPTION_SIMD_ERROR
+    mov     QWORD [rbp + TRAP_FRAME.ExceptionCode], rcx
+
+    mov     rdx, rbp
+    sub     rsp, 4 * 8
+    call    ExHndCommon
+    add     rsp, 4 * 8
+
+    EXIT_EXCEPTION_HANDLER
+
+
+;;
+;; Helper functions
+;;
+
+global HwLoadTr
+global HwStoreTr
+global HwLoadCs
+global HwStoreCs
+global HwLoadDs
+global HwStoreDs
+global HwLoadEs
+global HwStoreEs
+global HwLoadFs
+global HwStoreFs
+global HwLoadGs
+global HwStoreGs
+global HwLoadSs
+global HwStoreSs
+
+;; CX = TSS Selector
+HwLoadTr:
+    ltr     cx
+    ret
+
+;; AX = TSS Selector
+HwStoreTr:
+    str     ax
+    ret
+
+;; CX = CS Selector
+HwLoadCs:
+    xor     rax, rax
+    mov     ax, cx
+    push    rax
+    call    $ + 5
+    add     qword [rsp], 7
+    retf
+
+;; AX = CS Selector
+HwStoreCs:
+    xor     rax, rax
+    mov     ax, cs
+    ret
+
+;; CX = DS Selector
+HwLoadDs:
+    mov     ds, cx
+    ret
+
+;; AX = DS Selector
+HwStoreDs:
+    xor     rax, rax
+    mov     ax, ds
+    ret
+
+;; CX = ES Selector
+HwLoadEs:
+    mov     es, cx
+    ret
+
+;; AX = ES Selector
+HwStoreEs:
+    xor     rax, rax
+    mov     ax, es
+    ret
+
+;; CX = FS Selector
+HwLoadFs:
+    mov     fs, cx
+    ret
+
+;; AX = FS Selector
+HwStoreFs:
+    xor     rax, rax
+    mov     ax, fs
+    ret
+
+;; CX = GS Selector
+HwLoadGs:
+    mov     gs, cx
+    ret
+
+;; AX = GS Selector
+HwStoreGs:
+    xor     rax, rax
+    mov     ax, gs
+    ret
+
+;; CX = SS Selector
+HwLoadSs:
+    mov     ss, cx
+    ret
+
+;; AX = SS Selector
+HwStoreSs:
+    xor     rax, rax
+    mov     ax, ss
+    ret
+
+
+;;
+;; Interrupts
+;;
+global IsrHndSpurious
+IsrHndSpurious:
+    ;; Spurious IRQ, just do an IRETQ without sending an EOI
+    IRETQ
+
+;;
+;; PIT IRQ
+;;
+extern PitHandler
+global IsrHndPic
+
+IsrHndPic:
+    BEGIN_IRQ
+    GENERATE_TRAP_FRAME "e"
+
+    mov     QWORD [rbp + TRAP_FRAME.ExceptionCode], 0
+
+    mov     rcx, rbp
+    sub     rsp, 4 * 8
+    call    PitHandler
+    add     rsp, 4 * 8
+
+    RESTORE_CONTEXT_FROM_TRAP_FRAME
+    END_IRQ
+
+
+;;
+;; Keyboard IRQ
+;;
+extern KbHandler
+global IsrHndKeyboard
+
+IsrHndKeyboard:
+	BEGIN_IRQ
+	GENERATE_TRAP_FRAME "e"
+
+    mov     QWORD [rbp + TRAP_FRAME.ExceptionCode], 0
+
+    mov     rcx, rbp
+    sub     rsp, 4 * 8
+    call    KbHandler
+    add     rsp, 4 * 8
+
+	RESTORE_CONTEXT_FROM_TRAP_FRAME
+	END_IRQ

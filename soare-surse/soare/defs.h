@@ -49,20 +49,42 @@ typedef unsigned __int8     BYTE, *PBYTE;
 typedef unsigned __int16    WORD, *PWORD;
 typedef unsigned __int32    DWORD, *PDWORD;
 typedef unsigned __int64    QWORD, *PQWORD;
-typedef signed __int8       INT8;
-typedef signed __int16      INT16;
-typedef signed __int32      INT32;
-typedef signed __int64      INT64;
+typedef signed __int8       INT8, *PINT8;
+typedef signed __int16      INT16, *PINT16;
+typedef signed __int32      INT32, *PINT32;
+typedef signed __int64      INT64, PINT64;
+
+#ifndef UINT8
+#define UINT8               BYTE
+#endif // !UINT8
+
+#ifndef UINT16
+#define UINT16              WORD
+#endif // !UINT16
+
+#ifndef UINT32
+#define UINT32              DWORD
+#endif // !UINT32
+
+#ifndef UINT64
+#define UINT64              QWORD
+#endif // !UINT64
 
 typedef char                CHAR, *PCHAR;
 typedef unsigned char       UCHAR, *PUCHAR;
+typedef unsigned __int16    WCHAR, *PWCHAR;
 
-/// TODO/FIXME: THIS WILL NOT WORK ON 32-BIT BUILDS, DON'T BE LAZY!!
 typedef unsigned __int64    SIZE_T, *PSIZE_T;
+
+#ifndef size_t
+#define size_t              SIZE_T
+#endif // !size_t
 
 typedef void                VOID, *PVOID;
 
 typedef BYTE                BOOLEAN, *PBOOLEAN;
+
+typedef INT32               NTSTATUS;
 
 //
 // frequently used definitions
@@ -70,8 +92,8 @@ typedef BYTE                BOOLEAN, *PBOOLEAN;
 #define UNREFERENCED_PARAMETER(P)           (P)
 #define UNREFERENCED_LOCAL_VARIABLE(V)      (V)
 
-#define ROUND_DOWN(val,align)     ((((val) % (align))==0)?(val):((val) - ((val) % (align))))
-#define ROUND_UP(val,align)       ((((val) % (align))==0)?(val):((val) + ((align) - ((val) % (align)))))
+#define ROUND_DOWN(val, align)     ((((val) % (align)) == 0) ? (val) : ((val) - ((val) % (align))))
+#define ROUND_UP(val, align)       ((((val) % (align)) == 0) ? (val) : ((val) + ((align) - ((val) % (align)))))
 
 #define MIN(x, y)           (((x) < (y)) ? (x) : (y))
 #define MAX(x, y)           (((x) > (y)) ? (x) : (y))
@@ -80,5 +102,12 @@ typedef BYTE                BOOLEAN, *PBOOLEAN;
 #define FALSE               0
 
 #define NULL                ((PVOID)0)
+
+/// TODO: implement this
+#define assert(x)      
+
+#define BIT(i)              (1ULL << (i))
+
+#include <sal.h>
 
 #endif // _DEFS_H_

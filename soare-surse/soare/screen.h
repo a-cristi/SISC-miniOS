@@ -6,6 +6,7 @@
 #define VGA_LINES                   25
 #define VGA_COLUMNS                 80
 #define MAX_OFFSET                  (VGA_COLUMNS * VGA_LINES)
+#define VGA_HEADER_MAX_SIZE         VGA_COLUMNS
 
 // Text-mode color constants
 typedef enum VGA_COLOR
@@ -32,7 +33,8 @@ VOID
 VgaInit(
     _In_ PVOID Buffer,
     _In_ VGA_COLOR DefaultForeground,
-    _In_ VGA_COLOR DefaultBackground
+    _In_ VGA_COLOR DefaultBackground,
+    _In_ BOOLEAN WithHeader
 );
 
 VOID
@@ -63,6 +65,19 @@ VgaSetForeground(
 VOID
 VgaSetBackground(
     _In_ VGA_COLOR Bg
+);
+
+VOID
+VgaEnableHeader(
+    _In_ BOOLEAN Enable
+);
+
+VOID
+VgaUpdateHeader(
+    _In_ INT16 Position,
+    _In_ VGA_COLOR Foreground,
+    _In_ VGA_COLOR Background,
+    _In_ const PCHAR Str
 );
 
 #endif // _SCREEN_H_

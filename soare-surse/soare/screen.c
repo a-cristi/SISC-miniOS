@@ -9,6 +9,8 @@ typedef struct _SCREEN
     WORD        CurrentRow;
     WORD        CurrentColumn;
 
+    WORD        StartRow;
+
     BYTE        CurrentColorStyle;  // background and foreground information
 } SCREEN, *PSCREEN;
 
@@ -28,7 +30,7 @@ _VgaScroll(
 )
 {
     // move everything up
-    for (WORD row = 0; row < gScreen.CurrentRow - 1; row++)
+    for (WORD row = gScreen.StartRow; row < gScreen.CurrentRow; row++)
     {
         for (WORD column = 0; column < VGA_COLUMNS; column++)
         {
@@ -39,7 +41,8 @@ _VgaScroll(
     // and clear the last column using the current style
     for (WORD column = 0; column < VGA_COLUMNS; column++)
     {
-        gScreen.Buffer[VGA_MAKE_OFFSET(gScreen.CurrentRow, column)] = VGA_MAKE_ENTRY(' ', gScreen.CurrentColorStyle);
+        BYTE bg = gScreen.CurrentColorStyle >> 4;
+        gScreen.Buffer[VGA_MAKE_OFFSET(gScreen.CurrentRow, column)] = VGA_MAKE_ENTRY(' ', VGA_MAKE_STYLE(bg, bg));
     }
 }
 
@@ -58,27 +61,35 @@ _VgaSetCursorPosition(
         gScreen.CurrentColumn = 0;
     }
 
-    while (gScreen.CurrentRow >= VGA_LINES)
+    while (gScreen.CurrentRow >= VGA_LINES - 1)
     {
         _VgaScroll();
         gScreen.CurrentRow--;
+    }
+
+    if (gScreen.CurrentRow < gScreen.StartRow)
+    {
+        gScreen.CurrentRow = gScreen.StartRow;
     }
 }
 
 
 #define VGA_INCREMENT       _VgaSetCursorPosition(gScreen.CurrentRow, gScreen.CurrentColumn + 1)
+#define VGA_DECREMENT       _VgaSetCursorPosition(gScreen.CurrentColumn == 0 ? gScreen.CurrentRow - 1 : gScreen.CurrentRow, gScreen.CurrentColumn == 0 ? VGA_COLUMNS - 1 : gScreen.CurrentColumn - 1)
 
 
 VOID
 VgaInit(
     _In_ PVOID Buffer,
     _In_ VGA_COLOR DefaultForeground,
-    _In_ VGA_COLOR DefaultBackground
+    _In_ VGA_COLOR DefaultBackground,
+    _In_ BOOLEAN WithHeader
 )
 {
     gScreen.Buffer = Buffer;
 
-    gScreen.CurrentColumn = gScreen.CurrentRow = 0;
+    gScreen.CurrentRow = gScreen.StartRow = WithHeader ? 1 : 0;
+    gScreen.CurrentColumn = 0;
     gScreen.CurrentColorStyle = VGA_MAKE_STYLE(DefaultForeground, DefaultBackground);
 
     CLS;
@@ -115,8 +126,10 @@ VgaPutChar(
 
 
 #define CH_NEW_LINE     '\n'
+#define CH_RET          '\r'
 #define CH_TAB          '\t'
 #define CH_NULL         '\0'
+#define CH_BACKSPACE    '\b'
 
 
 VOID
@@ -131,11 +144,23 @@ VgaPutString(
         switch (Str[index])
         {
         case CH_NEW_LINE:
+        case CH_RET:
             _VgaSetCursorPosition(gScreen.CurrentRow + 1, 0);
             break;
 
         case CH_TAB:
             VgaPutString("    ");
+            break;
+
+        case CH_BACKSPACE:
+            /// TODO: in order to correctly handle backspace when the cursor is at the start of a new row we will have 
+            /// to remember where we have written the last character on each row
+            if (gScreen.CurrentColumn != 0)
+            {
+                VGA_DECREMENT;
+                VgaPutChar(' ');
+                VGA_DECREMENT;
+            }
             break;
 
         default:
@@ -171,4 +196,62 @@ VgaSetBackground(
 
     // set the new background
     gScreen.CurrentColorStyle |= (Bg << 4);
+}
+
+
+VOID
+VgaControlHeader(
+    _In_ BOOLEAN Enable
+)
+{
+    if (Enable)
+    {
+        gScreen.StartRow = 1;
+        if (gScreen.CurrentRow < gScreen.StartRow)
+        {
+            gScreen.CurrentRow = gScreen.StartRow;
+        }
+    }
+    else
+    {
+        gScreen.StartRow = 0;
+    }
+}
+
+
+VOID
+VgaUpdateHeader(
+    _In_ INT16 Position,
+    _In_ VGA_COLOR Foreground,
+    _In_ VGA_COLOR Background,
+    _In_ const PCHAR Str
+)
+{
+    WORD i = 0;
+    BOOLEAN bRightToLeft = FALSE;
+    WORD start = Position;
+    WORD stop = VGA_COLUMNS;
+
+    if (Position < 0)
+    {
+        Position *= -1;
+        bRightToLeft = TRUE;
+        start = VGA_COLUMNS - Position;
+    }
+
+    if (Position >= VGA_COLUMNS || !Str)
+    {
+        return;
+    }
+
+    for (WORD col = start; col < stop; col++)
+    {
+        if (Str[i] == '\0')
+        {
+            break;
+        }
+
+        gScreen.Buffer[VGA_MAKE_OFFSET(0, col)] = VGA_MAKE_ENTRY(Str[i], VGA_MAKE_STYLE(Foreground, Background));
+        i++;
+    }
 }
