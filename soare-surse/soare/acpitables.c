@@ -106,7 +106,6 @@ AcpiFindRootPointer(
         return status;
     }
 
-    paTable = 0;
     paTable = *(WORD *)(pTable);
     paTable <<= 4;
 
